@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
+// 配置动态路由
+export const dynamic = 'force-dynamic'
+
 // GET /api/movies - 获取电影列表
 export async function GET(request: NextRequest) {
   try {
@@ -111,8 +114,10 @@ export async function POST() {
     const genreCount: Record<string, number> = {}
     genreStats.forEach((movie) => {
       if (movie.genres && Array.isArray(movie.genres)) {
-        movie.genres.forEach((genre: string) => {
-          genreCount[genre] = (genreCount[genre] || 0) + 1
+        movie.genres.forEach((genre) => {
+          if (typeof genre === 'string') {
+            genreCount[genre] = (genreCount[genre] || 0) + 1
+          }
         })
       }
     })

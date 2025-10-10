@@ -2,7 +2,7 @@ import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
   /* config options here */
-  output: 'export',
+  // 移除了 output: 'export' 以支持 API 路由
   typescript: {
     ignoreBuildErrors: true,
   },
