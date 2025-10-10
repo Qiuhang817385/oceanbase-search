@@ -1,0 +1,70 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model MovieCorpus {
+  id               String                       @db.VarChar(4096)
+  embedding        Unsupported("VECTOR(1024)")?
+  document         String?                      @db.LongText
+  metadata         Json?
+  componentCode    Int                          @map("component_code")
+  movieId          Int                          @map("movie_id")
+  title            String                       @db.VarChar(500)
+  originalTitle    String?                      @map("original_title") @db.VarChar(500)
+  year             Int?
+  countries        Json?
+  languages        Json?
+  genres           Json?
+  durations        Json?
+  directors        Json?
+  writers          Json?
+  actors           Json?
+  summary          String?                      @db.Text
+  summaryEmbedding String?                      @map("summary_embedding") @db.Text
+  ratingScore      Float?                       @map("rating_score") @db.Float
+  ratingCount      Int?                         @map("rating_count")
+  ratingRaw        Json?                        @map("rating_raw")
+  tags             Json?
+  collectCount     Int?                         @map("collect_count")
+  wishCount        Int?                         @map("wish_count")
+  commentsCount    Int?                         @map("comments_count")
+  reviewsCount     Int?                         @map("reviews_count")
+  images           Json?
+  videos           Json?
+  photos           Json?
+  pubdates         Json?
+  mainlandPubdate  String?                      @map("mainland_pubdate") @db.VarChar(20)
+  aka              Json?
+  recordTime       String?                      @map("record_time") @db.VarChar(50)
+
+  @@id([id, componentCode])
+  @@index([id, componentCode], map: "rowkey_vid_table")
+  @@map("movie_corpus")
+}
+
+model posts {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime
+  title     String   @db.VarChar(255)
+  content   String?
+  published Boolean  @default(false)
+  authorId  Int
+}
+
+model profiles {
+  id     Int     @id @default(autoincrement())
+  bio    String?
+  userId Int     @unique
+}
+
+model users {
+  id    Int     @id @default(autoincrement())
+  email String  @unique
+  name  String?
+}
