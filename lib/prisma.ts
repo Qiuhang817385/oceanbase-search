@@ -5,8 +5,22 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
 }
 
-// 创建 Prisma 客户端实例
-export const prisma = globalForPrisma.prisma ?? new PrismaClient()
+// 创建 Prisma 客户端实例，针对 Vercel 无服务器环境优化
+export const prisma =
+  globalForPrisma.prisma ??
+  new PrismaClient({
+    log:
+      process.env.NODE_ENV === 'development'
+        ? ['query', 'error', 'warn']
+        : ['error'],
+    datasources: {
+      db: {
+        url: process.env.DATABASE_URL,
+      },
+    },
+  })
 
 // 在开发环境中，将客户端实例保存到全局变量中，避免热重载时创建多个实例
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
+if (process.env.NODE_ENV !== 'production') {
+  globalForPrisma.prisma = prisma
+}
