@@ -56,6 +56,8 @@ export async function GET(request: NextRequest) {
           directors: true,
           actors: true,
           summary: true,
+          // 此处需要添加summaryEmbedding用于向量查询
+          summaryEmbedding: true,
           ratingScore: true,
           ratingCount: true,
           images: true,
