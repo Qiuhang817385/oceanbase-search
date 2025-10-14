@@ -6,6 +6,7 @@ import { useMovieSearch } from '@/lib/hooks/useMovieSearch'
 import MoviesTable from './MoviesTable'
 import Pagination from './Pagination'
 import { MovieData } from '@/lib/movies'
+import { useState } from 'react'
 
 const { Search } = Input
 const { Option } = Select
@@ -84,8 +85,37 @@ export default function MovieSearchPage({
     )
   }
 
+  const [query, setQuery] = useState('战争片')
+
+  const handleHybridSearch = async () => {
+    if (!query.trim()) return
+
+    try {
+      const response = await fetch('/api/hybrid-test', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query,
+        }),
+      })
+
+      const data = await response.json()
+    } catch (error) {
+      console.error('搜索请求失败:', error)
+    }
+  }
+
   return (
     <Card title="Prisma 数据库演示(演示 Prisma ORM 的基本 CRUD 操作)">
+      {/* <Button
+        onClick={() => {
+          handleHybridSearch()
+        }}
+      >
+        搜索电影
+      </Button> */}
       {/* 搜索和过滤区域 */}
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
         <Col xs={24} sm={12} md={8}>
