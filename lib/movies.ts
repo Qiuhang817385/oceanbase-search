@@ -102,3 +102,33 @@ export async function getMovies(
     throw new Error('获取电影列表失败')
   }
 }
+
+export async function getMovieById(id: string): Promise<MovieData | null> {
+  try {
+    const movie = await prisma.movieCorpus.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        title: true,
+        originalTitle: true,
+        year: true,
+        genres: true,
+        countries: true,
+        languages: true,
+        directors: true,
+        actors: true,
+        summary: true,
+        ratingScore: true,
+        ratingCount: true,
+        images: true,
+        componentCode: true,
+        movieId: true,
+      },
+    })
+
+    return movie
+  } catch (error) {
+    console.error('获取电影详情失败:', error)
+    throw new Error('获取电影详情失败')
+  }
+}

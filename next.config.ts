@@ -9,6 +9,22 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'img1.doubanio.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'img9.doubanio.com',
+        port: '',
+        pathname: '/**',
+      },
+    ],
+  },
   // assetPrefix: process.env.NODE_ENV === 'production' ? '/static' : '',
   // env: {
   //   ASSET_PREFIX: process.env.NODE_ENV === 'production' ? '/static' : '',
