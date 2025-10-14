@@ -1,7 +1,7 @@
 'use client'
 
 import { Card, Input, Select, Button, Space, Row, Col } from 'antd'
-import { SearchOutlined, ReloadOutlined } from '@ant-design/icons'
+import { ReloadOutlined } from '@ant-design/icons'
 import { useMovieSearch } from '@/lib/hooks/useMovieSearch'
 import MoviesTable from './MoviesTable'
 import Pagination from './Pagination'
@@ -41,7 +41,7 @@ export default function MovieSearchPage({
   } = useMovieSearch({ initialData, initialQuery })
 
   // 年份选项（示例数据）
-  const yearOptions = Array.from({ length: 30 }, (_, i) => 2024 - i)
+  const yearOptions = Array.from({ length: 100 }, (_, i) => 2024 - i)
 
   // 类型选项（示例数据）
   const genreOptions = [

@@ -42,12 +42,8 @@ export function useMovieSearch({
     {}
   )
 
-  console.log('filters', filters)
-
   // 构建搜索参数
   const searchParams = buildSearchParams(initialQuery, filters)
-
-  console.log('searchParams', searchParams)
 
   // 使用 SWR 进行数据获取
   const { data, error, isLoading, mutate } = useSWR(
