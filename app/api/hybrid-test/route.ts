@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { initializeModel } from '@/middleware/model.js'
 
 // 配置动态路由
 export const dynamic = 'force-dynamic'
@@ -17,12 +18,21 @@ export async function POST(request: NextRequest) {
       minRating = 0,
     } = await request.json()
 
+    const { model } = await initializeModel()
+
     if (!query) {
       return NextResponse.json(
         { success: false, error: '缺少查询内容' },
         { status: 400 }
       )
     }
+
+    console.log('query', query)
+
+    // 现在可以使用 req.model 进行嵌入生成
+    const queryEmbedding = await model.embed(query)
+    // 修复：正确格式化向量数组
+    const vectorString = JSON.stringify(queryEmbedding)
 
     // 1. 生成查询文本的向量嵌入
     // const embeddingResponse = await fetch(
@@ -51,81 +61,149 @@ export async function POST(request: NextRequest) {
     // console.log('queryEmbedding', queryEmbedding)
 
     // 4. 关键词搜索
-    const keywordSearchSQL = `
-      SELECT dbms_hybrid_search.get_sql('movie_corpus',  
+    const getSQLQuery = `
+      SELECT dbms_hybrid_search.get_sql('movie_corpus',
       '{
-        "query": 
+        "query":
           {
-            "query_string": 
+            "query_string":
             {
-              "fields": 
+              "fields":
                 [
-                  "directors^3", 
-                  "actors^2.5", 
-                  "tags^2", 
-                  "genres^1.5", 
+                  "directors^3",
+                  "actors^2.5",
+                  "tags^2",
+                  "genres^1.5",
                   "summary"
-                ], 
-                "query": "2000年之前的战争片", "boost": 0.5
+                ],
+                "query": "${query.replace(/"/g, '\\"')}", "boost": 0.5
               }
-            }, 
+            },
             "knn": {
-              "field": "embedding", 
-              "k": 10, 
-              "num_candidates": 50, 
-              "query_vector": []
+              "field": "embedding",
+              "k": 10,
+              "num_candidates": 50,
+              "query_vector":  ${vectorString}
               }
         }'
       )
       LIMIT 5
     `
 
-    return
+    const testFunctionQuery = `
+      SELECT 
+        ROUTINE_NAME, 
+        ROUTINE_TYPE 
+      FROM information_schema.ROUTINES 
+      WHERE ROUTINE_NAME LIKE '%hybrid%' 
+         OR ROUTINE_NAME LIKE '%search%'
+    `
 
-    // 5. 并行执行两种搜索
-    const [keywordResults] = await Promise.all([
-      prisma.$queryRawUnsafe(keywordSearchSQL),
-    ])
+    const simpleGetSQLQuery = `
+    SELECT dbms_hybrid_search.get_sql('movie_corpus', '{"query": {"match_all": {}}}') as simple_sql
+  `
+    const simpleGetSQLQuery2 = `
+    SELECT json_pretty(dbms_hybrid_search.search('movie_corpus', '{"query": {"match_all": {}}}')) as simple_sql
+  `
 
-    // 6. 混合搜索结果
-    const combinedResults = new Map()
+    // 先测试简单的数据库连接
+    // const testQuery = `
+    //   SELECT COUNT(*) as total_count
+    //   FROM movie_corpus
+    //   LIMIT 1
+    // `
 
-    // 处理关键词搜索结果
-    keywordResults.forEach((item: any) => {
-      const id = item.id
-      const existing = combinedResults.get(id)
+    const vectorSearchSQL = `
+      SELECT 
+        id,
+        title,
+        original_title,
+        summary,
+        year,
+        genres,
+        directors,
+        actors,
+        rating_score,
+        rating_count,
+        VECTOR_DISTANCE(embedding, JSON_ARRAY(${queryEmbedding.join(
+          ','
+        )})) as distance
+      FROM movie_corpus 
+      WHERE embedding IS NOT NULL
+      ORDER BY distance ASC
+      LIMIT ${limit}
+    `
 
-      if (existing) {
-        existing.keywordScore = item.keyword_score
-      } else {
-        combinedResults.set(id, {
-          ...item,
-          vectorSimilarity: 0,
-          vectorDistance: 1,
-          keywordScore: item.keyword_score,
-          hybridScore: 0,
-        })
+    const testQueries = [
+      {
+        name: 'embedding_field',
+        sql: `
+          SELECT 
+            id, title, summary, year, genres,
+            VECTOR_DISTANCE(embedding, JSON_ARRAY(${queryEmbedding.join(
+              ','
+            )})) as distance
+          FROM movie_corpus 
+          WHERE embedding IS NOT NULL
+          ORDER BY distance ASC
+          LIMIT ${limit}
+        `,
+      },
+      {
+        name: 'summary_embedding_field',
+        sql: `
+          SELECT 
+            id, title, summary, year, genres, images,
+            VECTOR_DISTANCE(
+              JSON_EXTRACT(summary_embedding, '$'), 
+              JSON_ARRAY(${queryEmbedding.join(',')})
+            ) as distance
+          FROM movie_corpus 
+          WHERE summary_embedding IS NOT NULL 
+            AND summary_embedding != ''
+          ORDER BY distance ASC
+          LIMIT ${limit}
+        `,
+      },
+      {
+        name: 'simple_embedding_check',
+        sql: `
+          SELECT 
+            id, title, summary, year, genres
+          FROM movie_corpus 
+          WHERE embedding IS NOT NULL
+          LIMIT ${limit}
+        `,
+      },
+    ]
+    const results = {}
+
+    for (const testQuery of testQueries) {
+      try {
+        console.log(`Testing ${testQuery.name}...`)
+        const result = await prisma.$queryRawUnsafe(testQuery.sql)
+        results[testQuery.name] = {
+          success: true,
+          data: result,
+          count: Array.isArray(result) ? result.length : 0,
+        }
+        console.log(`${testQuery.name} succeeded!`)
+      } catch (error) {
+        results[testQuery.name] = {
+          success: false,
+          error: error.message,
+        }
+        console.log(`${testQuery.name} failed:`, error.message)
       }
-    })
-
-    // 7. 计算混合分数并排序
-    const finalResults = Array.from(combinedResults.values())
+    }
 
     return NextResponse.json({
       success: true,
       data: {
         query,
-        results: finalResults,
-        total: finalResults.length,
-        weights: {
-          vector: vectorWeight,
-          keyword: keywordWeight,
-        },
-        searchStats: {
-          vectorResults: [].length,
-          keywordResults: keywordResults.length,
-          combinedResults: finalResults.length,
-        },
+        results,
+        total: Array.isArray(results) ? results.length : 0,
+        searchType: 'vector_similarity',
       },
     })
   } catch (error) {

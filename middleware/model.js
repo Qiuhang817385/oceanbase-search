@@ -1,5 +1,4 @@
 
-import { createRouter } from 'next-connect';
 import Models from '../middleware/models';
 
 let modelInstance = null;
@@ -11,14 +10,17 @@ async function initializeModel () {
     model = new Models.openai(process.env.EMBEDDING_APIKEY);
     console.log("Using OpenAI embeddings");
 
-    const rerankProvider = process.env.RERANK_PROVIDER;
-    let rerank_model;
-    if (rerankProvider == "voyageai") {
-      rerank_model = new Models.voyageai(process.env.RERANK_APIKEY);
-      console.log("Using Voyage AI reranking");
-    }
+    // const rerankProvider = process.env.RERANK_PROVIDER;
+    // let rerank_model;
+    // if (rerankProvider == "voyageai") {
+    //   rerank_model = new Models.voyageai(process.env.RERANK_APIKEY);
+    //   console.log("Using Voyage AI reranking");
+    // }
 
-    modelInstance = { model, rerank_model };
+    modelInstance = {
+      model,
+      // rerank_model
+    };
   }
   return modelInstance;
 }
@@ -26,26 +28,29 @@ async function initializeModel () {
 // Initialize immediately and store promise
 const modelInitPromise = initializeModel();
 
-async function middleware (req, res, next) {
-  try {
-    // Ensure model is initialized
-    await modelInitPromise;
-    if (!modelInstance) {
-      throw new Error('Model failed to initialize');
-    }
-    req.model = modelInstance.model;
-    req.rerank_model = modelInstance.rerank_model;
-    return next();
-  } catch (error) {
-    console.log("Model middleware error", error);
-    return res.status(500).json({
-      error: 'Model initialization failed',
-      message: error.message
-    });
-  }
-}
+export {
+  initializeModel, modelInitPromise
+};
+// async function middleware (req, res, next) {
+//   try {
+//     // Ensure model is initialized
+//     await modelInitPromise;
+//     if (!modelInstance) {
+//       throw new Error('Model failed to initialize');
+//     }
+//     req.model = modelInstance.model;
+//     // req.rerank_model = modelInstance.rerank_model;
+//     return next();
+//   } catch (error) {
+//     console.log("Model middleware error", error);
+//     return res.status(500).json({
+//       error: 'Model initialization failed',
+//       message: error.message
+//     });
+//   }
+// }
 
-const modelRouter = createRouter();
-modelRouter.use(middleware);
+// const modelRouter = createRouter();
+// modelRouter.use(middleware);
 
-export default modelRouter;
+// export default modelRouter;

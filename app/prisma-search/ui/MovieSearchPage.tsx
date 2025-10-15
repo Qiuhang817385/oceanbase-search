@@ -85,10 +85,14 @@ export default function MovieSearchPage({
     )
   }
 
-  const [query, setQuery] = useState('战争片')
+  const [vectorQuery, setvectorQuery] = useState('')
+
+  const [vectorQueryData, setvectorQueryData] = useState([])
+
+  const vectoryMovies = vectorQueryData?.['simple_embedding_check']?.data
 
   const handleHybridSearch = async () => {
-    if (!query.trim()) return
+    if (!vectorQuery.trim()) return
 
     try {
       const response = await fetch('/api/hybrid-test', {
@@ -97,27 +101,45 @@ export default function MovieSearchPage({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          query,
+          query: vectorQuery,
         }),
       })
 
       const data = await response.json()
+      setvectorQueryData(data.data.results)
+
+      console.log('data', data)
     } catch (error) {
       console.error('搜索请求失败:', error)
     }
   }
 
+  // 向量检索
+
+  console.log('movies', movies)
+
   return (
     <Card title="Prisma 数据库演示(演示 Prisma ORM 的基本 CRUD 操作)">
-      {/* <Button
-        onClick={() => {
-          handleHybridSearch()
-        }}
-      >
-        搜索电影
-      </Button> */}
       {/* 搜索和过滤区域 */}
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+        <Col span={24}>
+          <Space>
+            <Search
+              placeholder="向量检索"
+              allowClear
+              onChange={(e) => {
+                setvectorQuery(e.target.value)
+              }}
+            />
+            <Button
+              onClick={() => {
+                handleHybridSearch()
+              }}
+            >
+              搜索电影
+            </Button>
+          </Space>
+        </Col>
         <Col xs={24} sm={12} md={8}>
           <Search
             placeholder="搜索电影标题、摘要..."
@@ -169,10 +191,15 @@ export default function MovieSearchPage({
             </Button>
           </Space>
         </Col>
+        <Col span={12}>
+          <MoviesTable movies={vectoryMovies} />
+        </Col>
+        <Col span={12}>
+          <MoviesTable movies={movies} />
+        </Col>
       </Row>
 
       {/* 表格 */}
-      <MoviesTable movies={movies} />
 
       {/* 分页 */}
       <div style={{ marginTop: 16, textAlign: 'right' }}>
