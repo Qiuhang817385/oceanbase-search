@@ -170,11 +170,8 @@ export default function MovieSearchPage({
     const actors = Array.isArray(movie.actors)
       ? movie.actors.join(', ')
       : movie.actors || '未知'
-    const genres = Array.isArray(movie.genres)
-      ? movie.genres
-      : movie.genres
-      ? [movie.genres]
-      : ['未知']
+
+    const genres = JSON.parse(movie.genres.join(',').replace(/'/g, '"'))
 
     const pattern = /'name':\s*'([^']*)'/g
 
