@@ -89,7 +89,9 @@ export default function MovieSearchPage({
 
   const [vectorQueryData, setvectorQueryData] = useState([])
 
-  const vectoryMovies = vectorQueryData?.['simple_embedding_check']?.data
+  // console.log('vectorQueryData', vectorQueryData)
+
+  const vectoryMovies = vectorQueryData
 
   const handleHybridSearch = async () => {
     if (!vectorQuery.trim()) return
@@ -106,9 +108,8 @@ export default function MovieSearchPage({
       })
 
       const data = await response.json()
-      setvectorQueryData(data.data.results)
 
-      console.log('data', data)
+      setvectorQueryData(data.data.results)
     } catch (error) {
       console.error('搜索请求失败:', error)
     }
@@ -116,7 +117,7 @@ export default function MovieSearchPage({
 
   // 向量检索
 
-  console.log('movies', movies)
+  // console.log('movies', movies)
 
   return (
     <Card title="Prisma 数据库演示(演示 Prisma ORM 的基本 CRUD 操作)">

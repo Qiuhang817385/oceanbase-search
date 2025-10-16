@@ -8,17 +8,7 @@ export const dynamic = 'force-dynamic'
 // POST /api/hybrid-search - 混合检索搜索
 export async function POST(request: NextRequest) {
   try {
-    const {
-      query,
-      vectorWeight = 0.7,
-      keywordWeight = 0.3,
-      limit = 10,
-      year,
-      genre,
-      minRating = 0,
-    } = await request.json()
-
-    const { model } = await initializeModel()
+    const { query, limit = 10 } = await request.json()
 
     if (!query) {
       return NextResponse.json(
@@ -27,173 +17,121 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log('query', query)
-
-    // 现在可以使用 req.model 进行嵌入生成
+    const { model } = await initializeModel()
     const queryEmbedding = await model.embed(query)
-    // 修复：正确格式化向量数组
-    const vectorString = JSON.stringify(queryEmbedding)
 
-    // 1. 生成查询文本的向量嵌入
-    // const embeddingResponse = await fetch(
-    //   `${process.env.BASE_URL}/embeddings`,
-    //   {
-    //     method: 'POST',
-    //     headers: {
-    //       'Content-Type': 'application/json',
-    //       Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-    //     },
-    //     body: JSON.stringify({
-    //       model: process.env.EMBEDDING_MODEL || 'text-embedding-v4',
-    //       input: query,
-    //       dimensions: parseInt(process.env.DIMENSIONS || '1536'),
-    //     }),
-    //   }
-    // )
+    // 根据 OceanBase 文档，使用原生 SQL 进行向量搜索
+    // 方案1: 使用 embedding 字段 (VECTOR(1024) 类型)
+    let vectorResults = []
+    let searchType = 'text_search'
 
-    // if (!embeddingResponse.ok) {
-    //   throw new Error(`嵌入 API 调用失败: ${embeddingResponse.statusText}`)
-    // }
+    try {
+      // 截断或填充向量到 1024 维度以匹配数据库字段
+      // const adjustedEmbedding = queryEmbedding.slice(0, 1024)
+      // // 如果向量长度不足1024，用0填充
+      // while (adjustedEmbedding.length < 1024) {
+      //   adjustedEmbedding.push(0)
+      // }
 
-    // const embeddingData = await embeddingResponse.json()
-    // const queryEmbedding = embeddingData.data[0].embedding
+      const vectorSearchSQL = `
+        SELECT 
+          id, 
+          title, 
+          summary, 
+          countries,
+          languages,
+          year, 
+          genres,
+          directors,
+          actors,
+          rating_score,
+          rating_count,
+          images,
+          l2_distance(embedding, [${queryEmbedding.join(',')}]) as distance
+        FROM movie_corpus 
+        WHERE embedding IS NOT NULL
+        ORDER BY distance ASC
+        LIMIT ${limit}
+      `
 
-    // console.log('queryEmbedding', queryEmbedding)
-
-    // 4. 关键词搜索
-    const getSQLQuery = `
-      SELECT dbms_hybrid_search.get_sql('movie_corpus',
-      '{
-        "query":
-          {
-            "query_string":
-            {
-              "fields":
-                [
-                  "directors^3",
-                  "actors^2.5",
-                  "tags^2",
-                  "genres^1.5",
-                  "summary"
-                ],
-                "query": "${query.replace(/"/g, '\\"')}", "boost": 0.5
-              }
-            },
-            "knn": {
-              "field": "embedding",
-              "k": 10,
-              "num_candidates": 50,
-              "query_vector":  ${vectorString}
-              }
-        }'
+      console.log('Executing vector search with embedding field...')
+      vectorResults = await prisma.$queryRawUnsafe(vectorSearchSQL)
+      searchType = 'vector_search'
+      console.log(
+        'Vector search results count:',
+        Array.isArray(vectorResults) ? vectorResults.length : 0
       )
-      LIMIT 5
-    `
+    } catch (vectorError) {
+      console.log(
+        'Vector search failed, falling back to text search:',
+        vectorError.message
+      )
 
-    const testFunctionQuery = `
-      SELECT 
-        ROUTINE_NAME, 
-        ROUTINE_TYPE 
-      FROM information_schema.ROUTINES 
-      WHERE ROUTINE_NAME LIKE '%hybrid%' 
-         OR ROUTINE_NAME LIKE '%search%'
-    `
-
-    const simpleGetSQLQuery = `
-    SELECT dbms_hybrid_search.get_sql('movie_corpus', '{"query": {"match_all": {}}}') as simple_sql
-  `
-    const simpleGetSQLQuery2 = `
-    SELECT json_pretty(dbms_hybrid_search.search('movie_corpus', '{"query": {"match_all": {}}}')) as simple_sql
-  `
-
-    // 先测试简单的数据库连接
-    // const testQuery = `
-    //   SELECT COUNT(*) as total_count
-    //   FROM movie_corpus
-    //   LIMIT 1
-    // `
-
-    const vectorSearchSQL = `
-      SELECT 
-        id,
-        title,
-        original_title,
-        summary,
-        year,
-        genres,
-        directors,
-        actors,
-        rating_score,
-        rating_count,
-        VECTOR_DISTANCE(embedding, JSON_ARRAY(${queryEmbedding.join(
-          ','
-        )})) as distance
-      FROM movie_corpus 
-      WHERE embedding IS NOT NULL
-      ORDER BY distance ASC
-      LIMIT ${limit}
-    `
-
-    const testQueries = [
-      {
-        name: 'embedding_field',
-        sql: `
+      // 方案2: 使用 summary_embedding 字段 (text 类型，JSON 格式)
+      try {
+        const summaryVectorSQL = `
           SELECT 
-            id, title, summary, year, genres,
-            VECTOR_DISTANCE(embedding, JSON_ARRAY(${queryEmbedding.join(
+            id, 
+            title, 
+            summary, 
+            year, 
+            genres,
+            directors,
+            actors,
+            rating_score,
+            rating_count,
+            l2_distance(JSON_EXTRACT(summary_embedding, '$'), [${queryEmbedding.join(
               ','
-            )})) as distance
-          FROM movie_corpus 
-          WHERE embedding IS NOT NULL
-          ORDER BY distance ASC
-          LIMIT ${limit}
-        `,
-      },
-      {
-        name: 'summary_embedding_field',
-        sql: `
-          SELECT 
-            id, title, summary, year, genres, images,
-            VECTOR_DISTANCE(
-              JSON_EXTRACT(summary_embedding, '$'), 
-              JSON_ARRAY(${queryEmbedding.join(',')})
-            ) as distance
+            )}]) as distance
           FROM movie_corpus 
           WHERE summary_embedding IS NOT NULL 
             AND summary_embedding != ''
           ORDER BY distance ASC
           LIMIT ${limit}
-        `,
-      },
-      {
-        name: 'simple_embedding_check',
-        sql: `
-          SELECT 
-            id, title, summary, year, genres
-          FROM movie_corpus 
-          WHERE embedding IS NOT NULL
-          LIMIT ${limit}
-        `,
-      },
-    ]
-    const results = {}
+        `
 
-    for (const testQuery of testQueries) {
-      try {
-        console.log(`Testing ${testQuery.name}...`)
-        const result = await prisma.$queryRawUnsafe(testQuery.sql)
-        results[testQuery.name] = {
-          success: true,
-          data: result,
-          count: Array.isArray(result) ? result.length : 0,
-        }
-        console.log(`${testQuery.name} succeeded!`)
-      } catch (error) {
-        results[testQuery.name] = {
-          success: false,
-          error: error.message,
-        }
-        console.log(`${testQuery.name} failed:`, error.message)
+        console.log('Executing vector search with summary_embedding field...')
+        vectorResults = await prisma.$queryRawUnsafe(summaryVectorSQL)
+        searchType = 'vector_search_summary'
+        console.log(
+          'Summary vector search results count:',
+          Array.isArray(vectorResults) ? vectorResults.length : 0
+        )
+      } catch (summaryVectorError) {
+        console.log(
+          'Summary vector search also failed:',
+          summaryVectorError.message
+        )
+
+        // 方案3: 回退到文本搜索
+        const searchResults = await prisma.movieCorpus.findMany({
+          where: {
+            OR: [
+              { title: { contains: query } },
+              { summary: { contains: query } },
+              { originalTitle: { contains: query } },
+            ],
+          },
+          take: limit,
+          select: {
+            id: true,
+            title: true,
+            originalTitle: true,
+            summary: true,
+            year: true,
+            genres: true,
+            directors: true,
+            actors: true,
+            ratingScore: true,
+            ratingCount: true,
+          },
+          orderBy: {
+            ratingScore: 'desc',
+          },
+        })
+
+        vectorResults = searchResults
+        searchType = 'text_search'
       }
     }
 
@@ -201,17 +139,22 @@ export async function POST(request: NextRequest) {
       success: true,
       data: {
         query,
-        results,
-        total: Array.isArray(results) ? results.length : 0,
-        searchType: 'vector_similarity',
+        results: vectorResults,
+        total: Array.isArray(vectorResults) ? vectorResults.length : 0,
+        searchType,
+        embeddingDimensions: queryEmbedding.length,
+        message:
+          searchType === 'text_search'
+            ? '使用文本搜索，向量搜索遇到问题'
+            : '向量搜索成功',
       },
     })
   } catch (error) {
-    console.error('混合检索失败:', error)
+    console.error('搜索失败:', error)
     return NextResponse.json(
       {
         success: false,
-        error: '混合检索失败',
+        error: '搜索失败',
         details: error instanceof Error ? error.message : '未知错误',
       },
       { status: 500 }
