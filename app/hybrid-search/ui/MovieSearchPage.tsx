@@ -192,7 +192,8 @@ export default function MovieSearchPage({
         bodyStyle={{ padding: 16 }}
       >
         <Row gutter={16}>
-          <Col span={6}>
+          {/* 暂时屏蔽图片 */}
+          {/* <Col span={6}>
             {imageUrl ? (
               <div
                 style={{
@@ -227,8 +228,8 @@ export default function MovieSearchPage({
                 暂无图片
               </div>
             )}
-          </Col>
-          <Col span={18}>
+          </Col> */}
+          <Col span={24}>
             <div style={{ marginBottom: 8 }}>
               <Text style={{ fontSize: 14, color: '#999', marginRight: 8 }}>
                 {String(index + 1).padStart(2, '0')}
