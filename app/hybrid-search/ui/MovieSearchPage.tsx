@@ -20,6 +20,9 @@ import {
 } from '@ant-design/icons'
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
+import createHighlighting, {
+  createHighlightsManually,
+} from '@/lib/highlighting'
 
 const { Search } = Input
 const { Text, Title } = Typography
@@ -167,6 +170,9 @@ export default function MovieSearchPage({}: MovieSearchPageProps) {
       ? movie.genres.split(' ').filter((g: string) => g.trim())
       : []
 
+    // 高亮数据
+    const highlightsField = createHighlightsManually(movie, searchQuery)
+
     return (
       <Card
         key={movie.id}
@@ -239,7 +245,17 @@ export default function MovieSearchPage({}: MovieSearchPageProps) {
                 marginBottom: 8,
               }}
             >
-              {summary}
+              {highlightsField?.length > 0 ? (
+                <span
+                  dangerouslySetInnerHTML={createHighlighting(
+                    highlightsField,
+                    `summary`,
+                    summary
+                  )}
+                />
+              ) : (
+                summary
+              )}
             </Text>
 
             <div style={{ marginBottom: 8 }}>
