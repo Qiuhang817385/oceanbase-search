@@ -68,3 +68,21 @@ model users {
   email String  @unique
   name  String?
 }
+
+// 备用数据库表结构 - movies_with_rating
+model MoviesWithRating {
+  id            BigInt                       @id @default(autoincrement())
+  movie_id      BigInt?
+  title         String?                      @db.VarChar(500)
+  original_title String?                     @map("original_title") @db.VarChar(500)
+  year          Int?
+  summary       String?                      @db.LongText
+  rating        Float?                       // 注意：这里是 rating 而不是 rating_score
+  tags          String?                      @db.LongText
+  genres        String?                      @db.LongText
+  directors     String?                      @db.LongText
+  actors        String?                      @db.LongText
+  embedding     Unsupported("VECTOR(1024)")?
+
+  @@map("movies_with_rating")
+}

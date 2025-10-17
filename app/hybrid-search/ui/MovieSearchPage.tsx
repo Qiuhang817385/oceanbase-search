@@ -67,6 +67,7 @@ export default function MovieSearchPage({
 
   // 预设查询标签
   const presetQueries = [
+    '莱昂纳多',
     '影史评分最高的5部电影',
     '小李子出演的5部最经典电影',
     '林超贤评分最高的5部电影',
@@ -80,10 +81,10 @@ export default function MovieSearchPage({
 
     setIsLoading(true)
     try {
-      // 并行调用向量搜索和混合搜索
-      const [vectorResponse, hybridResponse] = await Promise.all([
-        // 向量搜索
-        fetch('/api/hybrid-test', {
+      // 并行调用多数据库向量搜索和混合搜索
+      const [multiVectorResponse, hybridResponse] = await Promise.all([
+        // 多数据库向量搜索
+        fetch('/api/multi-vector-search', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -91,33 +92,36 @@ export default function MovieSearchPage({
           body: JSON.stringify({
             query: searchQuery,
             limit: 5,
+            // databases: ['main', 'back'], // 指定要搜索的数据库
+            databases: ['back'], // 指定要搜索的数据库
           }),
         }),
         // 混合搜索
-        fetch('/api/hybrid-search', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            query: searchQuery,
-            limit: 5,
-            vectorWeight: 0.7,
-            keywordWeight: 0.3,
-          }),
-        }),
+        // fetch('/api/hybrid-search', {
+        //   method: 'POST',
+        //   headers: {
+        //     'Content-Type': 'application/json',
+        //   },
+        //   body: JSON.stringify({
+        //     query: searchQuery,
+        //     limit: 5,
+        //     vectorWeight: 0.7,
+        //     keywordWeight: 0.3,
+        //   }),
+        // }),
       ])
 
-      const [vectorData, hybridData] = await Promise.all([
-        vectorResponse.json(),
-        hybridResponse.json(),
+      const [multiVectorData, hybridData] = await Promise.all([
+        multiVectorResponse.json(),
+        {},
+        // hybridResponse.json(),
       ])
 
-      console.log('向量搜索结果:', vectorData)
+      console.log('多数据库向量搜索结果:', multiVectorData)
       console.log('混合搜索结果:', hybridData)
 
-      if (vectorData.success) {
-        setVectorResults(vectorData.data.results || [])
+      if (multiVectorData.success) {
+        setVectorResults(multiVectorData.data.results || [])
       }
 
       if (hybridData.success) {
@@ -153,13 +157,17 @@ export default function MovieSearchPage({
       score = movie.hybridScore || 0
       similarity = score.toFixed(3)
     } else {
-      // 向量搜索结果
+      // 向量搜索结果 - 新数据结构可能没有相似度字段
       if (movie.distance !== undefined) {
         score = 1 - movie.distance
         similarity = score.toFixed(3)
       } else if (movie.vector_similarity !== undefined) {
         score = movie.vector_similarity
         similarity = score.toFixed(3)
+      } else {
+        // 如果没有相似度数据，使用评分作为替代
+        score = (movie.rating_score || 0) / 10
+        similarity = movie.rating_score ? movie.rating_score.toFixed(1) : 'N/A'
       }
     }
 
@@ -167,20 +175,14 @@ export default function MovieSearchPage({
       movie.images?.small || movie.images?.medium || movie.images?.large
     const title = movie.title || movie.original_title || '未知标题'
     const summary = movie.summary || '暂无简介'
-    const actors = Array.isArray(movie.actors)
-      ? movie.actors.join(', ')
-      : movie.actors || '未知'
 
-    const genres = JSON.parse(movie.genres.join(',').replace(/'/g, '"'))
+    // 处理新的 actors 格式 - 简单字符串
+    const actors = movie.actors || '未知'
 
-    const pattern = /'name':\s*'([^']*)'/g
-
-    let matches = []
-    let match
-
-    while ((match = pattern.exec(actors)) !== null) {
-      matches.push(match[1]) // match[1] 是括号捕获的值
-    }
+    // 处理新的 genres 格式 - 简单字符串，按空格分割
+    const genres = movie.genres
+      ? movie.genres.split(' ').filter((g: string) => g.trim())
+      : []
 
     return (
       <Card
@@ -237,6 +239,11 @@ export default function MovieSearchPage({
               <Title level={4} style={{ margin: 0, display: 'inline' }}>
                 {title}
               </Title>
+              {movie.year && (
+                <Text style={{ fontSize: 12, color: '#999', marginLeft: 8 }}>
+                  ({movie.year})
+                </Text>
+              )}
             </div>
 
             <Text
@@ -253,7 +260,7 @@ export default function MovieSearchPage({
 
             <div style={{ marginBottom: 8 }}>
               <Text style={{ fontSize: 12, color: '#666' }}>演员: </Text>
-              <Text style={{ fontSize: 12 }}>{matches.join(',')}</Text>
+              <Text style={{ fontSize: 12 }}>{actors}</Text>
             </div>
 
             <div style={{ marginBottom: 8 }}>
@@ -270,8 +277,20 @@ export default function MovieSearchPage({
               </Space>
             </div>
 
+            <div style={{ marginBottom: 8 }}>
+              <Text style={{ fontSize: 12, color: '#666' }}>导演: </Text>
+              <Text style={{ fontSize: 12 }}>{movie.directors || '未知'}</Text>
+            </div>
+
             <div>
-              <Text style={{ fontSize: 12, color: '#666' }}>相似度: </Text>
+              <Text style={{ fontSize: 12, color: '#666' }}>
+                {isHybrid
+                  ? '混合评分'
+                  : movie.distance !== undefined
+                  ? '相似度'
+                  : '评分'}
+                :
+              </Text>
               <Text
                 style={{ fontSize: 12, color: '#1890ff', fontWeight: 'bold' }}
               >
@@ -328,7 +347,6 @@ export default function MovieSearchPage({
           />
         </div>
       </div>
-
       {/* 搜索区域 */}
       <div style={{ marginBottom: 32, textAlign: 'center' }}>
         <div style={{ maxWidth: 600, margin: '0 auto' }}>
@@ -382,7 +400,6 @@ export default function MovieSearchPage({
           </div>
         </div>
       </div>
-
       {/* 双列结果展示 */}
       <Row gutter={24}>
         {/* 向量搜索列 */}
