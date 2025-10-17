@@ -5,11 +5,13 @@ let modelInstance = null;
 
 async function initializeModel () {
   if (!modelInstance) {
-    const embeddingProvider = process.env.EMBEDDING_PROVIDER || "azure_openai";
+    // const embeddingProvider = process.env.EMBEDDING_PROVIDER || "azure_openai";
+
     let model;
     model = new Models.openai(process.env.EMBEDDING_APIKEY);
     console.log("Using OpenAI embeddings");
 
+    // 排名算法，暂时屏蔽
     // const rerankProvider = process.env.RERANK_PROVIDER;
     // let rerank_model;
     // if (rerankProvider == "voyageai") {
@@ -31,26 +33,3 @@ const modelInitPromise = initializeModel();
 export {
   initializeModel, modelInitPromise
 };
-// async function middleware (req, res, next) {
-//   try {
-//     // Ensure model is initialized
-//     await modelInitPromise;
-//     if (!modelInstance) {
-//       throw new Error('Model failed to initialize');
-//     }
-//     req.model = modelInstance.model;
-//     // req.rerank_model = modelInstance.rerank_model;
-//     return next();
-//   } catch (error) {
-//     console.log("Model middleware error", error);
-//     return res.status(500).json({
-//       error: 'Model initialization failed',
-//       message: error.message
-//     });
-//   }
-// }
-
-// const modelRouter = createRouter();
-// modelRouter.use(middleware);
-
-// export default modelRouter;
