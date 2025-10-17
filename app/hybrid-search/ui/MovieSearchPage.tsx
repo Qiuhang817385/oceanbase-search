@@ -43,23 +43,9 @@ interface MovieData {
   distance?: number
 }
 
-interface MovieSearchPageProps {
-  initialData: {
-    movies: MovieData[]
-    pagination: {
-      page: number
-      limit: number
-      total: number
-      totalPages: number
-    }
-  }
-  initialQuery: Record<string, string | undefined>
-}
+interface MovieSearchPageProps {}
 
-export default function MovieSearchPage({
-  initialData,
-  initialQuery,
-}: MovieSearchPageProps) {
+export default function MovieSearchPage({}: MovieSearchPageProps) {
   const defaultQuery = '高评分电影'
   const [searchQuery, setSearchQuery] = useState(defaultQuery)
   const [vectorResults, setVectorResults] = useState<MovieData[]>([])
