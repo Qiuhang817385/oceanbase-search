@@ -158,9 +158,9 @@ export default function MoviesTable({ movies }: MoviesTableProps) {
         <Button
           type="link"
           icon={<EyeOutlined />}
-          onClick={() => router.push(`/prisma-search/${record.id}`)}
+          // onClick={() => router.push(`/prisma-search/${record.id}`)}
         >
-          查看详情
+          查看详情（TODO）
         </Button>
       ),
     },

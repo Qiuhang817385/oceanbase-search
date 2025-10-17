@@ -60,7 +60,8 @@ export default function MovieSearchPage({
   initialData,
   initialQuery,
 }: MovieSearchPageProps) {
-  const [searchQuery, setSearchQuery] = useState('影史评分最高的5部电影')
+  const defaultQuery = '高评分电影'
+  const [searchQuery, setSearchQuery] = useState(defaultQuery)
   const [vectorResults, setVectorResults] = useState<MovieData[]>([])
   const [hybridResults, setHybridResults] = useState<MovieData[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -68,7 +69,7 @@ export default function MovieSearchPage({
   // 预设查询标签
   const presetQueries = [
     '莱昂纳多',
-    '影史评分最高的5部电影',
+    defaultQuery,
     '小李子出演的5部最经典电影',
     '林超贤评分最高的5部电影',
     '诺兰执导的科幻电影推荐',
@@ -84,7 +85,7 @@ export default function MovieSearchPage({
       // 并行调用多数据库向量搜索和混合搜索
       const [multiVectorResponse, hybridResponse] = await Promise.all([
         // 多数据库向量搜索
-        fetch('/api/multi-vector-search', {
+        fetch('/api/vector-search', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -97,28 +98,24 @@ export default function MovieSearchPage({
           }),
         }),
         // 混合搜索
-        // fetch('/api/hybrid-search', {
-        //   method: 'POST',
-        //   headers: {
-        //     'Content-Type': 'application/json',
-        //   },
-        //   body: JSON.stringify({
-        //     query: searchQuery,
-        //     limit: 5,
-        //     vectorWeight: 0.7,
-        //     keywordWeight: 0.3,
-        //   }),
-        // }),
+        fetch('/api/multi-hybrid-search', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            query: searchQuery,
+            limit: 5,
+            // databases: ['main', 'back'], // 指定要搜索的数据库
+            databases: ['back'],
+          }),
+        }),
       ])
 
       const [multiVectorData, hybridData] = await Promise.all([
         multiVectorResponse.json(),
-        {},
-        // hybridResponse.json(),
+        hybridResponse.json(),
       ])
-
-      console.log('多数据库向量搜索结果:', multiVectorData)
-      console.log('混合搜索结果:', hybridData)
 
       if (multiVectorData.success) {
         setVectorResults(multiVectorData.data.results || [])
@@ -351,7 +348,7 @@ export default function MovieSearchPage({
       <div style={{ marginBottom: 32, textAlign: 'center' }}>
         <div style={{ maxWidth: 600, margin: '0 auto' }}>
           <Search
-            placeholder="影史评分最高的5部电影"
+            placeholder={defaultQuery}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onSearch={handleSearch}

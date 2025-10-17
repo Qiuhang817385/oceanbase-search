@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 // 设置请求超时时间
 const REQUEST_TIMEOUT = 25000
 
-// POST /api/multi-vector-search - 多数据库向量搜索
+// POST /api/multi-hybrid-search - 多数据库向量搜索
 export async function POST(request: NextRequest) {
   const timeoutPromise = new Promise((_, reject) => {
     setTimeout(() => reject(new Error('请求超时')), REQUEST_TIMEOUT)
@@ -170,9 +170,15 @@ async function searchSingleDatabase(
 
     if (dbKey === 'back') {
       vectorSearchSQL = `
-      SELECT id, movie_id, title, original_title, year, summary, rating, tags, genres, directors, actors FROM hybrid_search('movies_with_rating', '{"knn": {"field": "embedding", "query_vector": [${queryEmbedding.join(
+      SELECT * FROM hybrid_search('movies_with_rating', 
+      '{"query": {"query_string": {"fields": 
+      ["directors", "actors^2.5", "tags^2", "genres^1.5", "summary^3"], 
+      "query": "${query}", 
+      }}, 
+      "knn": {"field": "embedding", "k": 20, "num_candidates": 100, "query_vector": [${queryEmbedding.join(
         ','
-      )}], "k": 20, "num_candidates": 100}}') LIMIT 10
+      )}]}, 
+       "rank": {"rrf": {}}}') LIMIT 10
     `
     } else {
       vectorSearchSQL = `
@@ -200,13 +206,9 @@ async function searchSingleDatabase(
     `
     }
 
-    vectorResults = await client.$queryRawUnsafe(
-      vectorSearchSQL,
-      ...queryEmbedding,
-      limit
-    )
+    vectorResults = await client.$queryRawUnsafe(vectorSearchSQL)
 
-    searchType = 'vector_search'
+    searchType = 'multi-hybrid-search'
 
     console.log(
       `✅ [${dbKey}] 向量搜索成功，找到 ${vectorResults.length} 条结果`
@@ -247,11 +249,7 @@ async function searchSingleDatabase(
           LIMIT ?
         `
 
-      vectorResults = await client.$queryRawUnsafe(
-        summaryVectorSQL,
-        ...queryEmbedding,
-        limit
-      )
+      vectorResults = await client.$queryRawUnsafe(summaryVectorSQL)
       searchType = 'vector_search_summary'
 
       console.log(
@@ -355,7 +353,7 @@ async function searchSingleDatabase(
   }
 }
 
-// GET /api/multi-vector-search - 获取多数据库配置和健康状态
+// GET /api/multi-hybrid-search - 获取多数据库配置和健康状态
 export async function GET() {
   try {
     const healthCheck = await multiDB.healthCheck()
