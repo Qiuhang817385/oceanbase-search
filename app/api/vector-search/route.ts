@@ -170,17 +170,28 @@ async function searchSingleDatabase(
 
     if (dbKey === 'back') {
       vectorSearchSQL = `
-      SELECT id, movie_id, title, original_title, year, summary, rating, tags, genres, directors, actors 
+      SELECT 
+        id, 
+        movie_id, 
+        title, 
+        original_title, 
+        year, 
+        summary, 
+        rating, 
+        tags, 
+        genres, 
+        directors, 
+        actors 
       FROM hybrid_search('movies_with_rating', 
-      '{
-        "knn": {
-            "field": "embedding", "query_vector": [${queryEmbedding.join(
-              ','
-            )}], 
+        '{
+          "knn": {
+            "field": "embedding", 
+            "query_vector": [${queryEmbedding.join(',')}], 
             "k": 20,
             "num_candidates": 100
-          }}') 
-        LIMIT 10
+          }
+        }') 
+      LIMIT 10
     `
     } else {
       vectorSearchSQL = `
