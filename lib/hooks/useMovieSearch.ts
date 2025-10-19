@@ -45,14 +45,28 @@ export function useMovieSearch({
   // 构建搜索参数
   const searchParams = buildSearchParams(initialQuery, filters)
 
+  // 检查是否需要重新请求（比较初始查询和当前过滤器的差异）
+  const initialSearchParams = buildSearchParams(initialQuery, {})
+  const currentSearchParams = buildSearchParams(initialQuery, filters)
+  const shouldRefetch = initialSearchParams !== currentSearchParams
+
+  console.log('SWR 请求检查:', {
+    initialSearchParams,
+    currentSearchParams,
+    shouldRefetch,
+    filters,
+  })
+
   // 使用 SWR 进行数据获取
   const { data, error, isLoading, mutate } = useSWR(
+    // shouldRefetch ? `/api/movies?${currentSearchParams}` : null, // 如果参数没变化，不请求
     `/api/movies?${searchParams}`,
     {
       fallbackData: initialData,
       refreshInterval: 0, // 不自动刷新，由用户操作触发
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
+      // revalidateOnMount: false, // 不挂载时重新验证
     }
   )
 

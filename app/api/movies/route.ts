@@ -8,31 +8,63 @@ export const dynamic = 'force-dynamic'
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
+
+    // 调试信息
+    console.log('API 请求 URL:', request.url)
+    console.log('API searchParams:', Object.fromEntries(searchParams.entries()))
+
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '10')
     const year = searchParams.get('year')
     const genre = searchParams.get('genre')
     const search = searchParams.get('search')
 
-    // 构建查询条件
-    const where: any = {}
-
-    if (year) {
-      where.year = parseInt(year)
-    }
-
-    if (genre) {
-      where.genres = {
-        path: '$',
-        string_contains: genre,
+    // 处理 filters 参数
+    let filters = {}
+    const filtersParam = searchParams.get('filters')
+    if (filtersParam) {
+      try {
+        filters = JSON.parse(filtersParam)
+        console.log('解析后的 filters:', filters)
+      } catch (error) {
+        console.error('解析 filters 失败:', error)
       }
     }
 
-    if (search) {
+    // 合并参数
+    const finalPage = filters.page || page
+    const finalLimit = limit
+    const finalYear = filters.year || year
+    const finalGenre = filters.genre || genre
+    const finalSearch = filters.search || search
+
+    console.log('最终参数:', {
+      finalPage,
+      finalLimit,
+      finalYear,
+      finalGenre,
+      finalSearch,
+    })
+
+    // 构建查询条件
+    const where: any = {}
+
+    if (finalYear) {
+      where.year = parseInt(finalYear)
+    }
+
+    if (finalGenre) {
+      where.genres = {
+        path: '$',
+        string_contains: finalGenre,
+      }
+    }
+
+    if (finalSearch) {
       where.OR = [
-        { title: { contains: search } },
-        { originalTitle: { contains: search } },
-        { summary: { contains: search } },
+        { title: { contains: finalSearch } },
+        { originalTitle: { contains: finalSearch } },
+        { summary: { contains: finalSearch } },
       ]
     }
 
@@ -40,8 +72,8 @@ export async function GET(request: NextRequest) {
     const [movies, total] = await Promise.all([
       prisma.movieCorpus.findMany({
         where,
-        skip: (page - 1) * limit,
-        take: limit,
+        skip: (finalPage - 1) * finalLimit,
+        take: finalLimit,
         orderBy: {
           ratingScore: 'desc',
         },
@@ -68,15 +100,17 @@ export async function GET(request: NextRequest) {
       prisma.movieCorpus.count({ where }),
     ])
 
+    console.log('查询结果:', { moviesCount: movies.length, total })
+
     return NextResponse.json({
       success: true,
       data: {
         movies,
         pagination: {
-          page,
-          limit,
+          page: finalPage,
+          limit: finalLimit,
           total,
-          totalPages: Math.ceil(total / limit),
+          totalPages: Math.ceil(total / finalLimit),
         },
       },
     })

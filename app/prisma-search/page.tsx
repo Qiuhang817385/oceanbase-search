@@ -40,6 +40,13 @@ export default async function Page({ searchParams }: PageProps) {
   // 解析 searchParams
   const resolvedParams = await resolveSearchParams(searchParams)
 
+  // 过滤掉 Next.js 内部参数
+  const cleanParams = Object.fromEntries(
+    Object.entries(resolvedParams).filter(([key]) => !key.startsWith('_'))
+  )
+
+  console.log('清理后的参数:', cleanParams)
+
   // 解析 filters JSON 字符串
   let filters: {
     page?: string
@@ -47,9 +54,9 @@ export default async function Page({ searchParams }: PageProps) {
     genre?: string
     search?: string
   } = {}
-  if (resolvedParams.filters) {
+  if (cleanParams.filters) {
     try {
-      filters = JSON.parse(resolvedParams.filters)
+      filters = JSON.parse(cleanParams.filters)
     } catch (error) {
       console.error('解析 filters 失败:', error)
     }
@@ -57,11 +64,11 @@ export default async function Page({ searchParams }: PageProps) {
 
   // 合并参数：filters 中的参数优先级更高
   const finalParams = {
-    page: filters.page || resolvedParams.page || '1',
-    limit: resolvedParams.limit || '10',
-    year: filters.year || resolvedParams.year,
-    genre: filters.genre || resolvedParams.genre,
-    search: filters.search || resolvedParams.search,
+    page: filters.page || cleanParams.page || '1',
+    limit: cleanParams.limit || '10',
+    year: filters.year || cleanParams.year,
+    genre: filters.genre || cleanParams.genre,
+    search: filters.search || cleanParams.search,
   }
 
   const page = parseInt(finalParams.page)

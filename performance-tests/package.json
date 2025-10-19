@@ -1,0 +1,29 @@
+{
+  "name": "oceanbase-search-performance-tests",
+  "version": "1.0.0",
+  "description": "Performance testing suite for OceanBase Search application",
+  "scripts": {
+    "test:api": "node scripts/api-performance-test.js",
+    "test:hybrid-search": "node scripts/hybrid-search-test.js",
+    "test:database": "node scripts/database-performance-test.js",
+    "test:frontend": "node scripts/frontend-performance-test.js",
+    "test:load": "artillery run artillery-config.yml",
+    "test:all": "npm run test:api && npm run test:hybrid-search && npm run test:database",
+    "monitor:start": "node scripts/performance-monitor.js",
+    "lighthouse": "lhci autorun"
+  },
+  "dependencies": {
+    "artillery": "^2.0.0",
+    "axios": "^1.6.0",
+    "puppeteer": "^21.0.0",
+    "lighthouse": "^11.0.0",
+    "@lhci/cli": "^0.12.0",
+    "mysql2": "^3.6.0",
+    "dotenv": "^16.3.0",
+    "cli-progress": "^3.12.0",
+    "chalk": "^4.1.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0"
+  }
+}

@@ -1,0 +1,74 @@
+config:
+  target: 'http://localhost:3000'
+  phases:
+    # 预热阶段
+    - duration: 30
+      arrivalRate: 2
+      name: '预热阶段'
+    # 正常负载
+    - duration: 60
+      arrivalRate: 5
+      name: '正常负载'
+    # 高负载
+    - duration: 30
+      arrivalRate: 10
+      name: '高负载'
+    # 峰值负载
+    - duration: 20
+      arrivalRate: 20
+      name: '峰值负载'
+  defaults:
+    headers:
+      Content-Type: 'application/json'
+  plugins:
+    metrics-by-endpoint: {}
+
+scenarios:
+  # 基础电影查询场景
+  - name: '基础电影查询'
+    weight: 40
+    flow:
+      - get:
+          url: '/api/movies'
+          qs:
+            page: '{{ $randomInt(1, 10) }}'
+            limit: '10'
+      - think: 1
+
+  # 搜索查询场景
+  - name: '搜索查询'
+    weight: 30
+    flow:
+      - get:
+          url: '/api/movies'
+          qs:
+            page: '1'
+            limit: '10'
+            search: "{{ $pick(['复仇者', '科幻', '动作', '爱情', '喜剧']) }}"
+      - think: 2
+
+  # 混合搜索场景
+  - name: '混合搜索'
+    weight: 20
+    flow:
+      - post:
+          url: '/api/hybrid-search'
+          json:
+            query: "{{ $pick(['科幻电影推荐', '动作片英雄', '爱情故事', '喜剧电影', '悬疑推理']) }}"
+            vectorWeight: 0.7
+            keywordWeight: 0.3
+            limit: 10
+      - think: 3
+
+  # 复杂查询场景
+  - name: '复杂查询'
+    weight: 10
+    flow:
+      - get:
+          url: '/api/movies'
+          qs:
+            page: '{{ $randomInt(1, 5) }}'
+            limit: '20'
+            year: '{{ $randomInt(2020, 2024) }}'
+            genre: "{{ $pick(['动作', '科幻', '爱情', '喜剧', '悬疑']) }}"
+      - think: 2
