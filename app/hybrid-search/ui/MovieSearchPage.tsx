@@ -11,6 +11,7 @@ import {
   Progress,
   Typography,
   Space,
+  Divider,
 } from 'antd'
 import {
   SearchOutlined,
@@ -25,7 +26,7 @@ import createHighlighting, {
 } from '@/lib/highlighting'
 
 const { Search } = Input
-const { Text, Title } = Typography
+const { Text, Title, Paragraph } = Typography
 
 interface MovieData {
   id: string
@@ -66,8 +67,10 @@ export default function MovieSearchPage({}: MovieSearchPageProps) {
     '汤姆·汉克斯主演的剧情片',
   ]
 
-  const handleSearch = async () => {
-    if (!searchQuery.trim()) return
+  const handleSearch = async (query?: string) => {
+    let realQuery = query || searchQuery
+
+    if (!realQuery.trim()) return
 
     setIsLoading(true)
     try {
@@ -80,8 +83,8 @@ export default function MovieSearchPage({}: MovieSearchPageProps) {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            query: searchQuery,
-            limit: 5,
+            query: realQuery,
+            limit: 10,
             // databases: ['main', 'back'], // 指定要搜索的数据库
             databases: ['back'], // 指定要搜索的数据库
           }),
@@ -93,8 +96,8 @@ export default function MovieSearchPage({}: MovieSearchPageProps) {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            query: searchQuery,
-            limit: 5,
+            query: realQuery,
+            limit: 10,
             // databases: ['main', 'back'], // 指定要搜索的数据库
             databases: ['back'],
           }),
@@ -118,10 +121,6 @@ export default function MovieSearchPage({}: MovieSearchPageProps) {
     } finally {
       setIsLoading(false)
     }
-  }
-
-  const handlePresetQuery = (query: string) => {
-    setSearchQuery(query)
   }
 
   // 页面加载时自动执行一次搜索
@@ -174,18 +173,26 @@ export default function MovieSearchPage({}: MovieSearchPageProps) {
     const highlightsField = createHighlightsManually(movie, searchQuery)
 
     return (
-      <Card
+      // <Card
+      //   key={movie.id}
+      //   style={{
+      //     marginBottom: 16,
+      //     borderRadius: 8,
+      //     boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+      //     marginLeft: 20,
+      //     marginRight: 20,
+      //   }}
+      // >
+      <Row
         key={movie.id}
         style={{
-          marginBottom: 16,
-          borderRadius: 8,
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+          marginLeft: 20,
+          marginRight: 20,
         }}
-        bodyStyle={{ padding: 16 }}
+        gutter={16}
       >
-        <Row gutter={16}>
-          {/* 暂时屏蔽图片 */}
-          {/* <Col span={6}>
+        {/* 暂时屏蔽图片 */}
+        {/* <Col span={6}>
             {imageUrl ? (
               <div
                 style={{
@@ -221,30 +228,65 @@ export default function MovieSearchPage({}: MovieSearchPageProps) {
               </div>
             )}
           </Col> */}
-          <Col span={24}>
-            <div style={{ marginBottom: 8 }}>
-              <Text style={{ fontSize: 14, color: '#999', marginRight: 8 }}>
-                {String(index + 1).padStart(2, '0')}
-              </Text>
-              <Title level={4} style={{ margin: 0, display: 'inline' }}>
-                {title}
-              </Title>
-              {movie.year && (
-                <Text style={{ fontSize: 12, color: '#999', marginLeft: 8 }}>
-                  ({movie.year})
-                </Text>
-              )}
-            </div>
-
+        <Col span={24}>
+          <div style={{ marginBottom: 8 }}>
             <Text
               style={{
-                fontSize: 12,
-                color: '#666',
-                lineHeight: 1.5,
-                display: 'block',
-                marginBottom: 8,
+                fontSize: 20,
+                color: 'rgb(13, 91, 250)',
+                marginRight: 8,
               }}
             >
+              {String(index + 1).padStart(2, '0')}
+            </Text>
+            <Title level={4} style={{ margin: 0, display: 'inline' }}>
+              {title}
+            </Title>
+            {movie.year && (
+              <Text style={{ fontSize: 12, color: '#999', marginLeft: 8 }}>
+                ({movie.year})
+              </Text>
+            )}
+          </div>
+
+          <Text
+            style={{
+              fontSize: 12,
+              color: '#666',
+              lineHeight: 1.5,
+              display: 'block',
+              marginBottom: 8,
+            }}
+          >
+            <Text
+              style={{ fontSize: 12 }}
+              ellipsis={{
+                tooltip: {
+                  color: '#fff',
+                  styles: {
+                    body: {
+                      background: '#000',
+                    },
+                  },
+                  title: (
+                    <>
+                      {highlightsField?.length > 0 ? (
+                        <span
+                          dangerouslySetInnerHTML={createHighlighting(
+                            highlightsField,
+                            `summary`,
+                            summary
+                          )}
+                        />
+                      ) : (
+                        summary
+                      )}
+                    </>
+                  ),
+                },
+              }}
+            >
+              <span style={{ fontSize: 12, color: '#666' }}>{`简介: `}</span>
               {highlightsField?.length > 0 ? (
                 <span
                   dangerouslySetInnerHTML={createHighlighting(
@@ -257,57 +299,67 @@ export default function MovieSearchPage({}: MovieSearchPageProps) {
                 summary
               )}
             </Text>
+          </Text>
 
-            <div style={{ marginBottom: 8 }}>
-              <Text style={{ fontSize: 12, color: '#666' }}>演员: </Text>
-              <Text style={{ fontSize: 12 }}>{actors}</Text>
-            </div>
-
-            <div style={{ marginBottom: 8 }}>
-              <Text style={{ fontSize: 12, color: '#666' }}>类型: </Text>
-              <Space size={4}>
-                {genres.slice(0, 3).map((genre: string, idx: number) => (
-                  <Tag
-                    key={idx}
-                    style={{ fontSize: 11, borderRadius: 12, margin: 0 }}
-                  >
-                    {genre}
-                  </Tag>
-                ))}
-              </Space>
-            </div>
-
-            <div style={{ marginBottom: 8 }}>
-              <Text style={{ fontSize: 12, color: '#666' }}>导演: </Text>
-              <Text style={{ fontSize: 12 }}>{movie.directors || '未知'}</Text>
-            </div>
-
-            <div>
-              <Text style={{ fontSize: 12, color: '#666' }}>
-                {isHybrid
-                  ? '混合评分'
-                  : movie.distance !== undefined
-                  ? '相似度'
-                  : '评分'}
-                :
-              </Text>
-              <Text
-                style={{ fontSize: 12, color: '#1890ff', fontWeight: 'bold' }}
-              >
-                {similarity}
-              </Text>
-              <div style={{ marginTop: 4 }}>
-                <Progress
-                  percent={score * 100}
-                  showInfo={false}
-                  strokeColor="#1890ff"
-                  size="small"
+          <div style={{ marginBottom: 8 }}>
+            <Text style={{ fontSize: 12, color: '#666' }}>演员: </Text>
+            <Text style={{ fontSize: 12 }}>
+              {highlightsField?.length > 0 ? (
+                <span
+                  dangerouslySetInnerHTML={createHighlighting(
+                    highlightsField,
+                    `actors`,
+                    actors
+                  )}
                 />
-              </div>
-            </div>
-          </Col>
-        </Row>
-      </Card>
+              ) : (
+                actors
+              )}
+            </Text>
+          </div>
+
+          <div style={{ marginBottom: 8 }}>
+            <Text style={{ fontSize: 12, color: '#666' }}>类型: </Text>
+            <Space size={4}>
+              {genres.slice(0, 3).map((genre: string, idx: number) => (
+                <Tag
+                  key={idx}
+                  style={{ fontSize: 11, borderRadius: 12, margin: 0 }}
+                >
+                  {genre}
+                </Tag>
+              ))}
+            </Space>
+          </div>
+
+          <div style={{ marginBottom: 8 }}>
+            <Text style={{ fontSize: 12, color: '#666' }}>导演: </Text>
+            <Text style={{ fontSize: 12 }}>{movie.directors || '未知'}</Text>
+          </div>
+
+          <div>
+            <Text style={{ fontSize: 12, color: '#666' }}>
+              {isHybrid
+                ? '混合评分'
+                : movie.distance !== undefined
+                ? '相似度'
+                : '评分'}
+              :
+            </Text>
+            <Text
+              style={{ fontSize: 12, color: '#1890ff', fontWeight: 'bold' }}
+            >
+              {similarity}
+            </Text>
+            <Divider
+              style={{
+                margin: '12px 0',
+              }}
+            />
+          </div>
+        </Col>
+      </Row>
+      // </Card>
     )
   }
 
@@ -392,7 +444,11 @@ export default function MovieSearchPage({}: MovieSearchPageProps) {
                       : '1px solid #d9d9d9',
                   color: searchQuery === query ? '#1890ff' : '#666',
                 }}
-                onClick={() => handlePresetQuery(query)}
+                onClick={() => {
+                  setSearchQuery(query)
+
+                  handleSearch(query)
+                }}
               >
                 {query}
               </Tag>
@@ -411,13 +467,24 @@ export default function MovieSearchPage({}: MovieSearchPageProps) {
               boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
               height: 'fit-content',
             }}
-            bodyStyle={{ padding: 20 }}
+            styles={{
+              body: {
+                padding: 0,
+              },
+            }}
           >
             <div
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 marginBottom: 16,
+                position: 'sticky',
+                top: 0,
+                backgroundColor: '#fff',
+                padding: '12px 20px',
+                zIndex: 10,
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                backdropFilter: 'blur(8px)',
               }}
             >
               <Avatar
@@ -456,18 +523,29 @@ export default function MovieSearchPage({}: MovieSearchPageProps) {
         <Col span={12}>
           <Card
             style={{
-              backgroundColor: '#fff',
+              backgroundColor: '#e8effe',
               borderRadius: 8,
               boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
               height: 'fit-content',
             }}
-            bodyStyle={{ padding: 20 }}
+            styles={{
+              body: {
+                padding: 0,
+              },
+            }}
           >
             <div
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 marginBottom: 16,
+                position: 'sticky',
+                top: 0,
+                backgroundColor: '#e8effe',
+                padding: '12px 20px',
+                zIndex: 10,
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                backdropFilter: 'blur(8px)',
               }}
             >
               <Avatar
