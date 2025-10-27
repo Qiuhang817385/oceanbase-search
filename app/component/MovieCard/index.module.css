@@ -1,0 +1,98 @@
+/* 电影卡片样式 */
+.movieCardRow {
+  margin-left: 20px;
+  margin-right: 20px;
+}
+
+.movieCardContent {
+  margin-bottom: 8px;
+}
+
+.movieRank {
+  font-size: 20px;
+  color: rgb(13, 91, 250);
+  margin-right: 8px;
+}
+
+.movieTitle {
+  margin: 0;
+  display: inline;
+}
+
+.movieYear {
+  font-size: 12px;
+  color: #999;
+  margin-left: 8px;
+}
+
+.movieSummary {
+  font-size: 12px;
+  color: #666;
+  line-height: 1.5;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.movieSummaryText {
+  font-size: 12px;
+}
+
+.movieActors {
+  margin-bottom: 8px;
+}
+
+.movieActorsLabel {
+  font-size: 12px;
+  color: #666;
+}
+
+.movieActorsText {
+  font-size: 12px;
+}
+
+.movieGenres {
+  margin-bottom: 8px;
+}
+
+.movieGenresLabel {
+  font-size: 12px;
+  color: #666;
+}
+
+.movieGenreTag {
+  font-size: 11px;
+  border-radius: 12px;
+  margin: 0;
+}
+
+.movieDirectors {
+  margin-bottom: 8px;
+}
+
+.movieDirectorsLabel {
+  font-size: 12px;
+  color: #666;
+}
+
+.movieDirectorsText {
+  font-size: 12px;
+}
+
+.movieScore {
+  /* 评分区域样式 */
+}
+
+.movieScoreLabel {
+  font-size: 12px;
+  color: #666;
+}
+
+.movieScoreValue {
+  font-size: 12px;
+  color: #1890ff;
+  font-weight: bold;
+}
+
+.movieDivider {
+  margin: 12px 0;
+}

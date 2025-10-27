@@ -1,0 +1,207 @@
+/* MovieSearchPage.module.css */
+
+/* 主容器样式 */
+.container {
+  padding: 24px;
+  /* background-color: #fafafa; */
+  background-color: #fff;
+  min-height: 100vh;
+}
+
+/* 头部标题区域 */
+.headerSection {
+  margin-bottom: 12px;
+}
+
+.headerContent {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+
+.mainTitle:global(.ant-typography) {
+  margin: 0;
+  color: #262626;
+  font-size: 24px;
+  margin-bottom: 8px;
+}
+
+.subtitle {
+  font-size: 16px;
+  color: #8c8c8c;
+}
+
+.settingsButton {
+  color: #8c8c8c;
+}
+
+/* 搜索区域 */
+.searchSection {
+  margin-bottom: 32px;
+  text-align: center;
+}
+
+.searchContainer {
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+.searchInput {
+  margin-bottom: 16px;
+}
+
+.presetTagsContainer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+.presetTag {
+  cursor: pointer;
+  padding: 4px 12px;
+  background-color: #f5f5f5;
+  border: 1px solid #d9d9d9;
+  color: #666;
+}
+
+.presetTagActive {
+  padding: 4px 12px;
+  background-color: #e6f7ff;
+  border: 1px solid #1890ff;
+  color: #1890ff;
+}
+
+/* 双列结果展示 */
+.resultsRow {
+  /* gutter 通过 Row 组件的 gutter 属性控制 */
+}
+
+/* 向量搜索列 */
+.vectorSearchCard {
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  height: fit-content;
+}
+
+.vectorSearchCardBody {
+  padding: 0;
+}
+
+.vectorSearchHeader {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16px;
+  position: sticky;
+  top: 0;
+  background-color: #fff;
+  padding: 12px 20px;
+  z-index: 10;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid #d9d9d9;
+}
+
+.searchTitle:global(.ant-typography) {
+  margin: 0;
+  color: #132039;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.searchSubtitle:global(.ant-typography) {
+  font-size: 12px;
+  color: #8c8c8c;
+  font-size: 16px;
+  font-weight: 400;
+}
+
+.hybridSearchTitle:global(.ant-typography) {
+  color: #0181fd;
+}
+
+.hybridSearchSubtitle {
+  color: #0181fd;
+}
+
+.switchButton {
+  position: absolute;
+  right: 0;
+  top: 0;
+  height: 100%;
+  width: 144px;
+  background-color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  border-left: 1px solid #d9d9d9;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.switchButtonText {
+  font-size: 24px;
+  font-weight: 600;
+  color: #8592ad;
+}
+.switchButtonSubText {
+  font-size: 16px;
+  font-weight: 400;
+  color: #8592ad;
+}
+
+/* 混合搜索列 */
+.hybridSearchCard {
+  background-color: #e8effe;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  height: fit-content;
+}
+
+.hybridSearchCardBody {
+  padding: 0;
+}
+
+.hybridSearchHeader {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16px;
+  position: sticky;
+  top: 0;
+  background-color: #e8effe;
+  padding: 12px 20px;
+  z-index: 10;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid #d9d9d9;
+}
+
+/* 空状态样式 */
+.emptyState {
+  text-align: center;
+  padding: 40px 0;
+  color: #8c8c8c;
+}
+
+/* 图片相关样式（暂时屏蔽） */
+.movieImageContainer {
+  position: relative;
+  width: 100%;
+  height: 120px;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.movieImagePlaceholder {
+  width: 100%;
+  height: 120px;
+  background-color: #f5f5f5;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #999;
+}

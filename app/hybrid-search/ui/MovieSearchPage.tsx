@@ -1,32 +1,14 @@
 'use client'
 
-import {
-  Input,
-  Button,
-  Tag,
-  Card,
-  Row,
-  Col,
-  Avatar,
-  Progress,
-  Typography,
-  Space,
-  Divider,
-} from 'antd'
-import {
-  SearchOutlined,
-  SettingOutlined,
-  CompassOutlined,
-  LinkOutlined,
-} from '@ant-design/icons'
-import { useState, useEffect } from 'react'
-import Image from 'next/image'
-import createHighlighting, {
-  createHighlightsManually,
-} from '@/lib/highlighting'
+import { Input, Button, Tag, Card, Row, Col, Typography, message } from 'antd'
+import { SearchOutlined, SettingOutlined } from '@ant-design/icons'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import SearchPageSkeleton from './SearchPageSkeleton'
+import styles from './styles/MovieSearchPage.module.css'
+import MovieCard from '@/app/component/MovieCard'
 
 const { Search } = Input
-const { Text, Title, Paragraph } = Typography
+const { Text, Title } = Typography
 
 interface MovieData {
   id: string
@@ -54,7 +36,10 @@ export default function MovieSearchPage({}: MovieSearchPageProps) {
   const [searchQuery, setSearchQuery] = useState(defaultQuery)
   const [vectorResults, setVectorResults] = useState<MovieData[]>([])
   const [hybridResults, setHybridResults] = useState<MovieData[]>([])
+  const [fullTextResults, setFullTextResults] = useState<MovieData[]>([])
   const [isLoading, setIsLoading] = useState(false)
+
+  const [messageApi, contextHolder] = message.useMessage()
 
   // 预设查询标签
   const presetQueries = [
@@ -67,6 +52,110 @@ export default function MovieSearchPage({}: MovieSearchPageProps) {
     '汤姆·汉克斯主演的剧情片',
   ]
 
+  // 将实际的搜索逻辑提取为独立函数
+  const performSearch = async (query: string) => {
+    try {
+      // 并行调用多数据库向量搜索和混合搜索
+      const [multiVectorResponse, hybridResponse, fullTextResponse] =
+        await Promise.all([
+          // 多数据库向量搜索
+          fetch('/api/vector-search', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              query,
+              limit: 10,
+              databases: ['back'],
+            }),
+          }),
+          // 混合搜索
+          fetch('/api/multi-hybrid-search', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              query,
+              limit: 10,
+              databases: ['back'],
+            }),
+          }),
+          // 全文搜索
+          fetch('/api/full-text-search', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              query,
+              limit: 10,
+              databases: ['back'],
+            }),
+          }),
+        ])
+
+      const [multiVectorData, hybridData, fullTextData] = await Promise.all([
+        multiVectorResponse.json(),
+        hybridResponse.json(),
+        fullTextResponse.json(),
+      ])
+
+      return {
+        vectorResults: multiVectorData.success
+          ? multiVectorData.data.results || []
+          : [],
+        hybridResults: hybridData.success ? hybridData.data.results || [] : [],
+        fullTextResults: fullTextData.success
+          ? fullTextData.data.results || []
+          : [],
+        success:
+          multiVectorData.success || hybridData.success || fullTextData.success,
+      }
+    } catch (error) {
+      console.error('搜索请求失败:', error)
+      throw error
+    }
+  }
+
+  const [showHitCacheInfo, setShowHitCacheInfo] = useState(false)
+
+  const useSearchCache = () => {
+    const cache = useRef(new Map())
+
+    const cachedSearch = useCallback(async (query: string) => {
+      const cacheKey = query.trim()
+      if (cache.current.has(cacheKey)) {
+        console.log('使用缓存结果：', cacheKey)
+        setShowHitCacheInfo(true)
+        setTimeout(() => {
+          setShowHitCacheInfo(false)
+        }, 3000)
+        return cache.current.get(cacheKey)
+      }
+      console.log('执行新搜索：', cacheKey)
+      const result = await performSearch(query)
+      cache.current.set(cacheKey, result)
+      return result
+    }, [])
+
+    // 清理缓存的方法
+    const clearCache = useCallback(() => {
+      cache.current.clear()
+      console.log('缓存已清理')
+    }, [])
+
+    // 获取缓存大小
+    const getCacheSize = useCallback(() => {
+      return cache.current.size
+    }, [])
+
+    return { cachedSearch, clearCache, getCacheSize }
+  }
+
+  const { cachedSearch, clearCache, getCacheSize } = useSearchCache()
+
   const handleSearch = async (query?: string) => {
     let realQuery = query || searchQuery
 
@@ -74,47 +163,12 @@ export default function MovieSearchPage({}: MovieSearchPageProps) {
 
     setIsLoading(true)
     try {
-      // 并行调用多数据库向量搜索和混合搜索
-      const [multiVectorResponse, hybridResponse] = await Promise.all([
-        // 多数据库向量搜索
-        fetch('/api/vector-search', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            query: realQuery,
-            limit: 10,
-            // databases: ['main', 'back'], // 指定要搜索的数据库
-            databases: ['back'], // 指定要搜索的数据库
-          }),
-        }),
-        // 混合搜索
-        fetch('/api/multi-hybrid-search', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            query: realQuery,
-            limit: 10,
-            // databases: ['main', 'back'], // 指定要搜索的数据库
-            databases: ['back'],
-          }),
-        }),
-      ])
+      const result = await cachedSearch(realQuery)
 
-      const [multiVectorData, hybridData] = await Promise.all([
-        multiVectorResponse.json(),
-        hybridResponse.json(),
-      ])
-
-      if (multiVectorData.success) {
-        setVectorResults(multiVectorData.data.results || [])
-      }
-
-      if (hybridData.success) {
-        setHybridResults(hybridData.data.results || [])
+      if (result.success) {
+        setVectorResults(result.vectorResults)
+        setHybridResults(result.hybridResults)
+        setFullTextResults(result.fullTextResults)
       }
     } catch (error) {
       console.error('搜索请求失败:', error)
@@ -123,285 +177,60 @@ export default function MovieSearchPage({}: MovieSearchPageProps) {
     }
   }
 
+  const [isInitialLoad, setIsInitialLoad] = useState(true)
+
+  const [isFTS, setIsFTS] = useState(false)
+
+  useEffect(() => {
+    if (showHitCacheInfo) {
+      messageApi.info('命中缓存')
+      setTimeout(() => {
+        messageApi.destroy()
+      }, 3000)
+    }
+  }, [showHitCacheInfo, messageApi])
+
+  const handleSwitchIsFTS = () => {
+    setIsFTS(!isFTS)
+  }
+
   // 页面加载时自动执行一次搜索
   useEffect(() => {
-    handleSearch()
+    // 延迟执行初始搜索，让首屏先渲染
+    const timer = setTimeout(() => {
+      handleSearch()
+      setIsInitialLoad(false)
+    }, 100) // 100ms延迟，确保骨架屏先显示
+    return () => clearTimeout(timer)
   }, [])
 
-  const renderMovieCard = (
-    movie: any,
-    index: number,
-    isHybrid: boolean = false
-  ) => {
-    // 处理不同的数据结构
-    let similarity = '0.000'
-    let score = 0
-
-    if (isHybrid) {
-      // 混合搜索结果
-      score = movie.hybridScore || 0
-      similarity = score.toFixed(3)
-    } else {
-      // 向量搜索结果 - 新数据结构可能没有相似度字段
-      if (movie.distance !== undefined) {
-        score = 1 - movie.distance
-        similarity = score.toFixed(3)
-      } else if (movie.vector_similarity !== undefined) {
-        score = movie.vector_similarity
-        similarity = score.toFixed(3)
-      } else {
-        // 如果没有相似度数据，使用评分作为替代
-        score = (movie.rating_score || 0) / 10
-        similarity = movie.rating_score ? movie.rating_score.toFixed(1) : 'N/A'
-      }
-    }
-
-    const imageUrl =
-      movie.images?.small || movie.images?.medium || movie.images?.large
-    const title = movie.title || movie.original_title || '未知标题'
-    const summary = movie.summary || '暂无简介'
-
-    // 处理新的 actors 格式 - 简单字符串
-    const actors = movie.actors || '未知'
-
-    // 处理新的 genres 格式 - 简单字符串，按空格分割
-    const genres = movie.genres
-      ? movie.genres.split(' ').filter((g: string) => g.trim())
-      : []
-
-    // 高亮数据
-    const highlightsField = createHighlightsManually(movie, searchQuery)
-
-    return (
-      // <Card
-      //   key={movie.id}
-      //   style={{
-      //     marginBottom: 16,
-      //     borderRadius: 8,
-      //     boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-      //     marginLeft: 20,
-      //     marginRight: 20,
-      //   }}
-      // >
-      <Row
-        key={movie.id}
-        style={{
-          marginLeft: 20,
-          marginRight: 20,
-        }}
-        gutter={16}
-      >
-        {/* 暂时屏蔽图片 */}
-        {/* <Col span={6}>
-            {imageUrl ? (
-              <div
-                style={{
-                  position: 'relative',
-                  width: '100%',
-                  height: 120,
-                  borderRadius: 4,
-                  overflow: 'hidden',
-                }}
-              >
-                <Image
-                  src={imageUrl}
-                  alt={title}
-                  fill
-                  sizes="120px"
-                  style={{ objectFit: 'cover' }}
-                />
-              </div>
-            ) : (
-              <div
-                style={{
-                  width: '100%',
-                  height: 120,
-                  backgroundColor: '#f5f5f5',
-                  borderRadius: 4,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#999',
-                }}
-              >
-                暂无图片
-              </div>
-            )}
-          </Col> */}
-        <Col span={24}>
-          <div style={{ marginBottom: 8 }}>
-            <Text
-              style={{
-                fontSize: 20,
-                color: 'rgb(13, 91, 250)',
-                marginRight: 8,
-              }}
-            >
-              {String(index + 1).padStart(2, '0')}
-            </Text>
-            <Title level={4} style={{ margin: 0, display: 'inline' }}>
-              {title}
-            </Title>
-            {movie.year && (
-              <Text style={{ fontSize: 12, color: '#999', marginLeft: 8 }}>
-                ({movie.year})
-              </Text>
-            )}
-          </div>
-
-          <Text
-            style={{
-              fontSize: 12,
-              color: '#666',
-              lineHeight: 1.5,
-              display: 'block',
-              marginBottom: 8,
-            }}
-          >
-            <Text
-              style={{ fontSize: 12 }}
-              ellipsis={{
-                tooltip: {
-                  color: '#fff',
-                  styles: {
-                    body: {
-                      background: '#000',
-                    },
-                  },
-                  title: (
-                    <>
-                      {highlightsField?.length > 0 ? (
-                        <span
-                          dangerouslySetInnerHTML={createHighlighting(
-                            highlightsField,
-                            `summary`,
-                            summary
-                          )}
-                        />
-                      ) : (
-                        summary
-                      )}
-                    </>
-                  ),
-                },
-              }}
-            >
-              <span style={{ fontSize: 12, color: '#666' }}>{`简介: `}</span>
-              {highlightsField?.length > 0 ? (
-                <span
-                  dangerouslySetInnerHTML={createHighlighting(
-                    highlightsField,
-                    `summary`,
-                    summary
-                  )}
-                />
-              ) : (
-                summary
-              )}
-            </Text>
-          </Text>
-
-          <div style={{ marginBottom: 8 }}>
-            <Text style={{ fontSize: 12, color: '#666' }}>演员: </Text>
-            <Text style={{ fontSize: 12 }}>
-              {highlightsField?.length > 0 ? (
-                <span
-                  dangerouslySetInnerHTML={createHighlighting(
-                    highlightsField,
-                    `actors`,
-                    actors
-                  )}
-                />
-              ) : (
-                actors
-              )}
-            </Text>
-          </div>
-
-          <div style={{ marginBottom: 8 }}>
-            <Text style={{ fontSize: 12, color: '#666' }}>类型: </Text>
-            <Space size={4}>
-              {genres.slice(0, 3).map((genre: string, idx: number) => (
-                <Tag
-                  key={idx}
-                  style={{ fontSize: 11, borderRadius: 12, margin: 0 }}
-                >
-                  {genre}
-                </Tag>
-              ))}
-            </Space>
-          </div>
-
-          <div style={{ marginBottom: 8 }}>
-            <Text style={{ fontSize: 12, color: '#666' }}>导演: </Text>
-            <Text style={{ fontSize: 12 }}>{movie.directors || '未知'}</Text>
-          </div>
-
-          <div>
-            <Text style={{ fontSize: 12, color: '#666' }}>
-              {isHybrid
-                ? '混合评分'
-                : movie.distance !== undefined
-                ? '相似度'
-                : '评分'}
-              :
-            </Text>
-            <Text
-              style={{ fontSize: 12, color: '#1890ff', fontWeight: 'bold' }}
-            >
-              {similarity}
-            </Text>
-            <Divider
-              style={{
-                margin: '12px 0',
-              }}
-            />
-          </div>
-        </Col>
-      </Row>
-      // </Card>
-    )
+  if (isInitialLoad) {
+    return <SearchPageSkeleton />
   }
 
   return (
-    <div
-      style={{
-        padding: '24px',
-        backgroundColor: '#fafafa',
-        minHeight: '100vh',
-      }}
-    >
+    <div className={styles.container}>
+      {contextHolder}
+
       {/* 头部标题区域 */}
-      <div style={{ marginBottom: 32 }}>
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'flex-start',
-            marginBottom: 8,
-          }}
-        >
+      <div className={styles.headerSection}>
+        <div className={styles.headerContent}>
           <div>
-            <Title
-              level={1}
-              style={{ margin: 0, color: '#262626', fontSize: 32 }}
-            >
+            <Title level={1} className={styles.mainTitle}>
               混合搜索测试器
             </Title>
-            <Text style={{ fontSize: 16, color: '#8c8c8c' }}>
-              豆瓣电影混合搜索
-            </Text>
+            <Text className={styles.subtitle}>电影混合搜索</Text>
           </div>
           <Button
             type="text"
             icon={<SettingOutlined />}
-            style={{ color: '#8c8c8c' }}
+            className={styles.settingsButton}
           />
         </div>
       </div>
       {/* 搜索区域 */}
-      <div style={{ marginBottom: 32, textAlign: 'center' }}>
-        <div style={{ maxWidth: 600, margin: '0 auto' }}>
+      <div className={styles.searchSection}>
+        <div className={styles.searchContainer}>
           <Search
             placeholder={defaultQuery}
             value={searchQuery}
@@ -417,33 +246,19 @@ export default function MovieSearchPage({}: MovieSearchPageProps) {
               </Button>
             }
             size="large"
-            style={{ marginBottom: 16 }}
+            className={styles.searchInput}
           />
 
           {/* 预设查询标签 */}
-          <div
-            style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: 8,
-              justifyContent: 'center',
-            }}
-          >
+          <div className={styles.presetTagsContainer}>
             {presetQueries.map((query, index) => (
               <Tag
                 key={index}
-                style={{
-                  cursor: 'pointer',
-                  borderRadius: 16,
-                  padding: '4px 12px',
-                  backgroundColor:
-                    searchQuery === query ? '#e6f7ff' : '#f5f5f5',
-                  border:
-                    searchQuery === query
-                      ? '1px solid #1890ff'
-                      : '1px solid #d9d9d9',
-                  color: searchQuery === query ? '#1890ff' : '#666',
-                }}
+                className={
+                  searchQuery === query
+                    ? styles.presetTagActive
+                    : styles.presetTag
+                }
                 onClick={() => {
                   setSearchQuery(query)
 
@@ -456,65 +271,62 @@ export default function MovieSearchPage({}: MovieSearchPageProps) {
           </div>
         </div>
       </div>
+
       {/* 双列结果展示 */}
-      <Row gutter={24}>
+      <Row gutter={24} className={styles.resultsRow}>
         {/* 向量搜索列 */}
         <Col span={12}>
           <Card
-            style={{
-              backgroundColor: '#fff',
-              borderRadius: 8,
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-              height: 'fit-content',
-            }}
+            className={styles.vectorSearchCard}
             styles={{
               body: {
                 padding: 0,
               },
             }}
           >
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                marginBottom: 16,
-                position: 'sticky',
-                top: 0,
-                backgroundColor: '#fff',
-                padding: '12px 20px',
-                zIndex: 10,
-                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                backdropFilter: 'blur(8px)',
-              }}
-            >
-              <Avatar
+            <div className={styles.vectorSearchHeader}>
+              {/* <Avatar
                 icon={<CompassOutlined />}
                 style={{ backgroundColor: '#fa8c16', marginRight: 12 }}
-              />
+              /> */}
               <div>
-                <Title level={3} style={{ margin: 0, color: '#262626' }}>
-                  向量搜索
+                <Title level={3} className={styles.searchTitle}>
+                  {isFTS ? '全文搜索' : '向量搜索'}
                 </Title>
-                <Text style={{ fontSize: 12, color: '#8c8c8c' }}>
-                  基于深度学习的语义相似度匹配
+                <Text className={styles.searchSubtitle}>
+                  {isFTS
+                    ? '基于全文搜索的语义相似度匹配'
+                    : '基于深度学习的语义相似度匹配'}
                 </Text>
+              </div>
+
+              <div
+                className={styles.switchButton}
+                onClick={() => {
+                  handleSwitchIsFTS()
+                }}
+              >
+                <div className={styles.switchButtonText}>
+                  {isFTS ? '向量搜索' : '全文搜索'}
+                </div>
+                <div className={styles.switchButtonSubText}>点击切换</div>
               </div>
             </div>
 
             {vectorResults.length > 0 ? (
-              vectorResults.map((movie, index) =>
-                renderMovieCard(movie, index, false)
-              )
+              vectorResults.map((movie, index) => {
+                return (
+                  <MovieCard
+                    key={index}
+                    movie={movie}
+                    index={index}
+                    isHybrid={false}
+                    searchQuery={searchQuery}
+                  />
+                )
+              })
             ) : (
-              <div
-                style={{
-                  textAlign: 'center',
-                  padding: '40px 0',
-                  color: '#8c8c8c',
-                }}
-              >
-                暂无搜索结果
-              </div>
+              <div className={styles.emptyState}>暂无搜索结果</div>
             )}
           </Card>
         </Col>
@@ -522,60 +334,45 @@ export default function MovieSearchPage({}: MovieSearchPageProps) {
         {/* 混合搜索列 */}
         <Col span={12}>
           <Card
-            style={{
-              backgroundColor: '#e8effe',
-              borderRadius: 8,
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-              height: 'fit-content',
-            }}
+            className={styles.hybridSearchCard}
             styles={{
               body: {
                 padding: 0,
               },
             }}
           >
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                marginBottom: 16,
-                position: 'sticky',
-                top: 0,
-                backgroundColor: '#e8effe',
-                padding: '12px 20px',
-                zIndex: 10,
-                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                backdropFilter: 'blur(8px)',
-              }}
-            >
-              <Avatar
+            <div className={styles.hybridSearchHeader}>
+              {/* <Avatar
                 icon={<LinkOutlined />}
                 style={{ backgroundColor: '#1890ff', marginRight: 12 }}
-              />
+              /> */}
               <div>
-                <Title level={3} style={{ margin: 0, color: '#262626' }}>
+                <Title
+                  level={3}
+                  className={`${styles.searchTitle} ${styles.hybridSearchTitle}`}
+                >
                   混合搜索
                 </Title>
-                <Text style={{ fontSize: 12, color: '#8c8c8c' }}>
+                <Text
+                  className={`${styles.searchSubtitle} ${styles.hybridSearchSubtitle}`}
+                >
                   结合语义理解与关键词精确匹配
                 </Text>
               </div>
             </div>
 
             {hybridResults.length > 0 ? (
-              hybridResults.map((movie, index) =>
-                renderMovieCard(movie, index, true)
-              )
+              hybridResults.map((movie, index) => (
+                <MovieCard
+                  key={index}
+                  movie={movie}
+                  index={index}
+                  isHybrid={true}
+                  searchQuery={searchQuery}
+                />
+              ))
             ) : (
-              <div
-                style={{
-                  textAlign: 'center',
-                  padding: '40px 0',
-                  color: '#8c8c8c',
-                }}
-              >
-                暂无搜索结果
-              </div>
+              <div className={styles.emptyState}>暂无搜索结果</div>
             )}
           </Card>
         </Col>
