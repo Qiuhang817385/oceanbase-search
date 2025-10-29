@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { DATABASE_TABLES } from '@/constants'
 
 // 配置动态路由
 export const dynamic = 'force-dynamic'
@@ -83,7 +84,7 @@ export async function POST(request: NextRequest) {
 
         // 更新数据库中的向量数据
         await prisma.$executeRawUnsafe(
-          `UPDATE movie_corpus 
+          `UPDATE ${DATABASE_TABLES.MOVIE_CORPUS} 
            SET embedding = JSON_ARRAY(${embedding.map(() => '?').join(', ')}),
                summary_embedding = ?
            WHERE id = ? AND component_code = ?`,
@@ -149,7 +150,7 @@ export async function GET() {
         COUNT(*) as total_movies,
         COUNT(embedding) as movies_with_embedding,
         COUNT(summary_embedding) as movies_with_summary_embedding
-      FROM movie_corpus
+      FROM ${DATABASE_TABLES.MOVIE_CORPUS}
     `)
 
     return NextResponse.json({

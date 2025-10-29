@@ -1,6 +1,4 @@
 // app/hybrid-search/ui/MinimalSkeleton.tsx
-'use client'
-
 export default function MinimalSkeleton() {
   return (
     <div className="p-6 bg-gray-50 min-h-screen">

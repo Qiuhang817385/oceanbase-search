@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { multiDB } from '@/lib/multi-prisma'
+import { DATABASE_TABLES, DATABASE_KEYS, getTableName } from '@/constants'
 
 // 配置动态路由
 export const dynamic = 'force-dynamic'
@@ -147,7 +148,7 @@ async function searchSingleDatabase(
   let searchType = 'text_search'
 
   // 根据数据库类型选择表名
-  const tableName = dbKey === 'back' ? 'movies_with_rating' : 'movie_corpus'
+  const tableName = getTableName(dbKey)
 
   try {
     // 方案3: 回退到文本搜索

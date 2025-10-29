@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { multiDB } from '@/lib/multi-prisma'
 import { initializeModel } from '@/middleware/model.js'
+import { DATABASE_TABLES, DATABASE_KEYS, getTableName } from '@/constants'
 
 // 配置动态路由
 export const dynamic = 'force-dynamic'
@@ -160,7 +161,7 @@ async function searchSingleDatabase(
   let searchType = 'text_search'
 
   // 根据数据库类型选择表名
-  const tableName = dbKey === 'back' ? 'movies_with_rating' : 'movie_corpus'
+  const tableName = getTableName(dbKey)
 
   try {
     // 方案1: 使用 embedding 字段进行向量搜索
@@ -182,7 +183,7 @@ async function searchSingleDatabase(
         genres, 
         directors, 
         actors 
-      FROM hybrid_search('movies_with_rating', 
+      FROM hybrid_search('${DATABASE_TABLES.MOVIES_WITH_RATING}', 
         '{
           "knn": {
             "field": "embedding", 
