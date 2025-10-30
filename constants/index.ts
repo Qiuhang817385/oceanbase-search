@@ -9,7 +9,7 @@ export const DATABASE_TABLES = {
   MOVIE_CORPUS: 'movie_corpus',
 
   // 备用数据库表名
-  MOVIES_WITH_RATING: 'movies_with_rating',
+  MOVIES_WITH_RATING: 'movies',
 } as const
 
 // 数据库键名常量

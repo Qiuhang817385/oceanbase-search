@@ -1,3 +1,4 @@
+import { DATABASE_TABLES } from '@/constants'
 import { PrismaClient } from '@prisma/client'
 
 // 全局变量，用于在开发环境中重用 Prisma 客户端实例
@@ -89,7 +90,7 @@ export class MultiDatabaseManager {
     try {
       // 备用数据库使用不同的表名
       const backCount =
-        await prismaBack.$queryRaw`SELECT COUNT(*) as count FROM movies_with_rating`
+        await prismaBack.$queryRaw`SELECT COUNT(*) as count FROM ${DATABASE_TABLES.MOVIES_WITH_RATING}`
       results.back = true
       results.details.back = {
         count: Number(backCount[0].count),

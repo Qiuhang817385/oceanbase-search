@@ -3,6 +3,15 @@ import { multiDB } from '@/lib/multi-prisma'
 import { initializeModel } from '@/middleware/model.js'
 import { DATABASE_TABLES, DATABASE_KEYS, getTableName } from '@/constants'
 
+type SingleDBResult = { results: any[]; searchType: string }
+type MultiDBResponse = {
+  results: any[]
+  searchType: string
+  message: string
+  performance: any
+  databaseResults: Record<string, any>
+}
+
 // 配置动态路由
 export const dynamic = 'force-dynamic'
 
@@ -40,7 +49,10 @@ export async function POST(request: NextRequest) {
       query,
       databases
     )
-    const result = await Promise.race([searchPromise, timeoutPromise])
+    const result = (await Promise.race([
+      searchPromise,
+      timeoutPromise,
+    ])) as MultiDBResponse
 
     return NextResponse.json({
       success: true,
@@ -94,7 +106,7 @@ async function performMultiDatabaseSearch(
 
       databaseResults[dbKey] = {
         success: true,
-        count: results.length,
+        count: results.results.length,
         searchType: results.searchType,
         results: results.results,
       }
@@ -178,8 +190,6 @@ async function searchSingleDatabase(
         original_title, 
         year, 
         summary, 
-        rating, 
-        tags, 
         genres, 
         directors, 
         actors 
@@ -228,130 +238,7 @@ async function searchSingleDatabase(
       `✅ [${dbKey}] 向量搜索成功，找到 ${vectorResults.length} 条结果`
     )
   } catch (vectorError: any) {
-    console.log(
-      `❌ [${dbKey}] embedding 字段向量搜索失败:`,
-      vectorError?.message
-    )
-
-    try {
-      // 方案2: 使用 summary_embedding 字段进行向量搜索
-      console.log(
-        `🔍 [${dbKey}] 尝试使用 summary_embedding 字段进行向量搜索...`
-      )
-
-      const summaryVectorSQL = `
-          SELECT 
-            id, 
-            title, 
-            original_title,
-            summary, 
-            year, 
-            genres,
-            directors,
-            actors,
-            rating_score,
-            rating_count,
-            images,
-            l2_distance(JSON_EXTRACT(summary_embedding, '$'), JSON_ARRAY(${queryEmbedding
-              .map(() => '?')
-              .join(',')})) as distance
-          FROM ${tableName} 
-          WHERE summary_embedding IS NOT NULL 
-            AND summary_embedding != ''
-            AND JSON_VALID(summary_embedding) = 1
-          ORDER BY distance ASC
-          LIMIT ?
-        `
-
-      vectorResults = await client.$queryRawUnsafe(summaryVectorSQL)
-      searchType = 'vector_search_summary'
-
-      console.log(
-        `✅ [${dbKey}] summary_embedding 向量搜索成功，找到 ${vectorResults.length} 条结果`
-      )
-    } catch (summaryVectorError: any) {
-      console.log(
-        `❌ [${dbKey}] summary_embedding 字段向量搜索也失败:`,
-        summaryVectorError?.message
-      )
-
-      try {
-        // 方案3: 回退到文本搜索
-        console.log(`🔍 [${dbKey}] 回退到文本搜索...`)
-
-        let searchResults: any[] = []
-
-        if (dbKey === 'back') {
-          // 备用数据库使用原生 SQL，注意字段名差异
-          const textSearchSQL = `
-              SELECT 
-                id, 
-                title, 
-                original_title,
-                summary, 
-                year, 
-                genres,
-                directors,
-                actors,
-                rating as rating_score,
-                NULL as rating_count,
-                NULL as images
-              FROM ${tableName} 
-              WHERE title LIKE ? 
-                OR summary LIKE ? 
-                OR original_title LIKE ?
-              ORDER BY rating DESC
-              LIMIT ?
-            `
-          const searchTerm = `%${query}%`
-          searchResults = await client.$queryRawUnsafe(
-            textSearchSQL,
-            searchTerm,
-            searchTerm,
-            searchTerm,
-            limit
-          )
-        } else {
-          // 主数据库使用 Prisma ORM
-          searchResults = await client.movieCorpus.findMany({
-            where: {
-              OR: [
-                { title: { contains: query } },
-                { summary: { contains: query } },
-                { originalTitle: { contains: query } },
-              ],
-            },
-            take: limit,
-            select: {
-              id: true,
-              title: true,
-              originalTitle: true,
-              summary: true,
-              year: true,
-              genres: true,
-              directors: true,
-              actors: true,
-              ratingScore: true,
-              ratingCount: true,
-              images: true,
-            },
-            orderBy: {
-              ratingScore: 'desc',
-            },
-          })
-        }
-
-        vectorResults = searchResults
-        searchType = 'text_search'
-
-        console.log(
-          `✅ [${dbKey}] 文本搜索成功，找到 ${vectorResults.length} 条结果`
-        )
-      } catch (textError: any) {
-        console.error(`❌ [${dbKey}] 文本搜索也失败:`, textError?.message)
-        throw new Error(`数据库 ${dbKey} 所有搜索方案都失败了`)
-      }
-    }
+    console.log(`❌ [${dbKey}] 向量搜索失败:`, vectorError?.message)
   }
 
   // 处理 BigInt 序列化问题

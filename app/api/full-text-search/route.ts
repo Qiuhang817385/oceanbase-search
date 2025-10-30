@@ -152,7 +152,7 @@ async function searchSingleDatabase(
 
   try {
     // 方案3: 回退到文本搜索
-    console.log(`🔍 [${dbKey}] 回退到文本搜索...`)
+    console.log(`🔍 [${dbKey}] full-text-search 文本搜索...`)
 
     let searchResults: any[] = []
 

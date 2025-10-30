@@ -1,6 +1,17 @@
 'use client'
 
-import { Input, Button, Tag, Card, Row, Col, Typography, message } from 'antd'
+import {
+  Input,
+  Slider,
+  Button,
+  Tag,
+  Card,
+  Row,
+  Col,
+  Typography,
+  message,
+  Space,
+} from 'antd'
 import { SearchOutlined, SettingOutlined } from '@ant-design/icons'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import SearchPageSkeleton from './SearchPageSkeleton'
@@ -32,7 +43,7 @@ interface MovieData {
 interface MovieSearchPageProps {}
 
 export default function MovieSearchPage({}: MovieSearchPageProps) {
-  const defaultQuery = '高评分电影'
+  const defaultQuery = '机器人主题的带反转的科幻电影'
   const [searchQuery, setSearchQuery] = useState(defaultQuery)
   const [vectorResults, setVectorResults] = useState<MovieData[]>([])
   const [hybridResults, setHybridResults] = useState<MovieData[]>([])
@@ -43,17 +54,17 @@ export default function MovieSearchPage({}: MovieSearchPageProps) {
 
   // 预设查询标签
   const presetQueries = [
+    '周星弛',
+    '曾志伟',
     '莱昂纳多',
     defaultQuery,
-    '小李子出演的5部最经典电影',
-    '林超贤评分最高的5部电影',
+    '家庭关系修复的温暖治愈的电影',
     '诺兰执导的科幻电影推荐',
-    '豆瓣评分9分以上的经典影片',
-    '汤姆·汉克斯主演的剧情片',
+    '讲女性成长的电影',
   ]
 
   // 将实际的搜索逻辑提取为独立函数
-  const performSearch = async (query: string) => {
+  const performSearch = async ({ query }: { query: string }) => {
     try {
       // 并行调用多数据库向量搜索和混合搜索
       const [multiVectorResponse, hybridResponse, fullTextResponse] =
@@ -135,7 +146,7 @@ export default function MovieSearchPage({}: MovieSearchPageProps) {
         return cache.current.get(cacheKey)
       }
       console.log('执行新搜索：', cacheKey)
-      const result = await performSearch(query)
+      const result = await performSearch({ query })
       cache.current.set(cacheKey, result)
       return result
     }, [])
@@ -203,6 +214,8 @@ export default function MovieSearchPage({}: MovieSearchPageProps) {
     }, 100) // 100ms延迟，确保骨架屏先显示
     return () => clearTimeout(timer)
   }, [])
+
+  const [hybridRadio, setHybridRadio] = useState(0.5)
 
   if (isInitialLoad) {
     return <SearchPageSkeleton />
@@ -272,6 +285,20 @@ export default function MovieSearchPage({}: MovieSearchPageProps) {
         </div>
       </div>
 
+      {/* <Row>
+        <Col span={12}></Col>
+        <Col span={12}>
+          <span className={styles.sliderText}>混合搜索权重: {hybridRadio}</span>
+          <Slider
+            max={1}
+            min={0}
+            step={0.1}
+            defaultValue={0.5}
+            onChange={(v) => setHybridRadio(v)}
+            value={hybridRadio}
+          />
+        </Col>
+      </Row> */}
       {/* 双列结果展示 */}
       <Row gutter={24} className={styles.resultsRow}>
         {/* 向量搜索列 */}

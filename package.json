@@ -11,7 +11,8 @@
     "db:migrate": "prisma migrate dev --name init",
     "postinstall": "prisma generate",
     "setup": "prisma generate",
-    "predev": "npm run setup"
+    "predev": "npm run setup",
+    "db:check:back": "node check-back-db-structure.js"
   },
   "dependencies": {
     "@ant-design/icons": "^6.1.0",
@@ -32,5 +33,6 @@
     "@types/react-dom": "^19",
     "tailwindcss": "^4",
     "typescript": "^5"
-  }
+  },
+  "repository": "https://github.com/Qiuhang817385/oceanbase-search.git"
 }
