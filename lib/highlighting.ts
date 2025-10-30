@@ -131,7 +131,7 @@ function getHighlightsHTML(
       return h.texts
         .map((t) => {
           if (t.type === 'hit') {
-            return "<strong style='color:blue'>" + t.value + '</strong>'
+            return "<strong style='color:#ffa21a'>" + t.value + '</strong>'
           } else {
             return t.value
           }

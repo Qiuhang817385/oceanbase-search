@@ -313,8 +313,8 @@ export default function MovieSearchPage({}: MovieSearchPageProps) {
               </div>
             </div>
 
-            {vectorResults.length > 0 ? (
-              vectorResults.map((movie, index) => {
+            {(isFTS ? fullTextResults : vectorResults).length > 0 ? (
+              (isFTS ? fullTextResults : vectorResults).map((movie, index) => {
                 return (
                   <MovieCard
                     key={index}

@@ -157,35 +157,25 @@ async function searchSingleDatabase(
     let searchResults: any[] = []
 
     if (dbKey === 'back') {
-      // 备用数据库使用原生 SQL，注意字段名差异
+      // 备用数据库使用 hybrid_search 函数
       const textSearchSQL = `
-              SELECT 
-                id, 
-                title, 
-                original_title,
-                summary, 
-                year, 
-                genres,
-                directors,
-                actors,
-                rating as rating_score,
-                NULL as rating_count,
-                NULL as images
-              FROM ${tableName} 
-              WHERE title LIKE ? 
-                OR summary LIKE ? 
-                OR original_title LIKE ?
-              ORDER BY rating DESC
-              LIMIT ?
-            `
-      const searchTerm = `%${query}%`
-      searchResults = await client.$queryRawUnsafe(
-        textSearchSQL,
-        searchTerm,
-        searchTerm,
-        searchTerm,
-        limit
-      )
+        SELECT * FROM hybrid_search('${DATABASE_TABLES.MOVIES_WITH_RATING}', 
+          '{
+            "query": {
+              "query_string": {
+                "fields": [
+                  "directors^2.5", 
+                  "actors^2.5", 
+                  "genres^1.5", 
+                  "summary"
+                ], 
+                "query": "${query}"
+              }
+            }
+          }') 
+        LIMIT 10
+      `
+      searchResults = await client.$queryRawUnsafe(textSearchSQL)
     } else {
       // 主数据库使用 Prisma ORM
       searchResults = await client.movieCorpus.findMany({
