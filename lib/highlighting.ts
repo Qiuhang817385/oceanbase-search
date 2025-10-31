@@ -1,3 +1,162 @@
+// lib/textSegmentation.ts
+
+/**
+ * 调用分词 API 进行中文分词
+ * @param text 待分词文本
+ * @param mode 分词模式：'cut' | 'cutHMM' | 'cutAll' | 'cutForSearch' | 'cutSmall'
+ * @returns 分词结果数组
+ */
+export async function segmentTextAPI(
+  text: string,
+  mode:
+    | 'cut'
+    | 'cutHMM'
+    | 'cutAll'
+    | 'cutForSearch'
+    | 'cutSmall' = 'cutForSearch'
+): Promise<string[]> {
+  try {
+    const response = await fetch('/api/segment', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ text, mode }),
+    })
+
+    if (!response.ok) {
+      throw new Error(`分词 API 错误: ${response.status}`)
+    }
+
+    const data = await response.json()
+    if (data.success) {
+      return data.data.words
+    } else {
+      throw new Error(data.error || '分词失败')
+    }
+  } catch (error) {
+    console.error('分词 API 调用失败:', error)
+    // 降级到简单分词
+    return segmentTextSync(text)
+  }
+}
+
+/**
+ * 同步分词（降级方案，当 API 不可用时使用）
+ */
+export function segmentTextSync(text: string): string[] {
+  if (!text || typeof text !== 'string') {
+    return []
+  }
+
+  const cleaned = text.trim()
+  const hasSpaces = /\s/.test(cleaned)
+
+  if (hasSpaces) {
+    // 包含空格：先按空格分割，然后处理中文部分
+    const parts = cleaned.split(/\s+/).filter((p) => p.length > 0)
+    const allSegments: string[] = []
+
+    parts.forEach((part) => {
+      if (/[\u4e00-\u9fa5]/.test(part)) {
+        // 中文：提取2-4字词组（限制数量）
+        allSegments.push(...extractChinesePhrasesLimited(part))
+      } else {
+        // 英文：直接添加
+        allSegments.push(part)
+      }
+    })
+
+    return [...new Set(allSegments)]
+  }
+
+  // 纯中文
+  if (/[\u4e00-\u9fa5]/.test(cleaned)) {
+    return extractChinesePhrasesLimited(cleaned)
+  }
+
+  // 纯英文或其他
+  return [cleaned]
+}
+
+/**
+ * 提取中文词组（限制数量，避免性能问题）
+ */
+function extractChinesePhrasesLimited(text: string, maxPhrases = 15): string[] {
+  const phrases: string[] = []
+  const textLength = text.length
+
+  if (textLength <= 2) {
+    return [text]
+  }
+
+  // 添加完整文本
+  phrases.push(text)
+
+  // 电影相关关键词词典（根据业务扩展）
+  const movieKeywords = [
+    '家庭',
+    '关系',
+    '修复',
+    '温暖',
+    '治愈',
+    '电影',
+    '科幻',
+    '爱情',
+    '动作',
+    '喜剧',
+    '剧情',
+    '悬疑',
+    '恐怖',
+    '冒险',
+    '动画',
+    '导演',
+    '演员',
+    '主演',
+    '推荐',
+    '主题',
+    '反转',
+    '成长',
+    '女性',
+    '男性',
+    '温暖治愈',
+    '家庭关系',
+  ]
+
+  // 提取匹配的关键词
+  movieKeywords.forEach((keyword) => {
+    if (text.includes(keyword) && !phrases.includes(keyword)) {
+      phrases.push(keyword)
+    }
+  })
+
+  // 如果还没达到上限，提取2-3字词组
+  if (phrases.length < maxPhrases) {
+    const stopWords = new Set(['的', '了', '和', '与', '及', '或', '但', '而'])
+    for (let len = 2; len <= 3 && phrases.length < maxPhrases; len++) {
+      for (
+        let i = 0;
+        i <= textLength - len && phrases.length < maxPhrases;
+        i++
+      ) {
+        const phrase = text.substring(i, i + len)
+        // 跳过包含停用词的组合
+        if (
+          !stopWords.has(phrase[0]) &&
+          !stopWords.has(phrase[1]) &&
+          !phrases.includes(phrase)
+        ) {
+          phrases.push(phrase)
+        }
+      }
+    }
+  }
+
+  return [...new Set(phrases)]
+    .sort((a, b) => b.length - a.length)
+    .slice(0, maxPhrases)
+}
+
 // 高亮文本片段类型
 interface HighlightText {
   type: 'hit' | 'text' // 'hit' 表示匹配的文本，'text' 表示普通文本
@@ -15,8 +174,22 @@ interface HighlightResult {
   __html: string // 包含 HTML 标签的字符串
 }
 
+function extractChinesPhrases(text: string): string[] {
+  const phrases: string[] = []
+  phrases.push(text)
+  for (let len = 2; len <= Math.min(4, text.length); len++) {
+    for (let i = 0; i <= text.length - len; i++) {
+      const phrase = text.substring(i, i + len)
+      if (phrase.length >= 2) {
+        phrases.push(phrase)
+      }
+    }
+  }
+  return [...new Set(phrases)].sort((a, b) => b.length - a.length)
+}
+
 // 手动构造高亮数据的函数 - 支持空格分隔的多词搜索
-function createHighlightsManually(
+async function createHighlightsManually(
   originalData: Record<string, any>,
   searchQuery: string,
   fieldsToHighlight: string[] = [
@@ -26,7 +199,7 @@ function createHighlightsManually(
     'directors',
     'genres',
   ]
-): HighlightField[] {
+): Promise<HighlightField[]> {
   const highlightsField: HighlightField[] = []
 
   // 处理搜索查询：去除首尾空格，分割为多个词，过滤空字符串
@@ -34,6 +207,12 @@ function createHighlightsManually(
     .trim()
     .split(/\s+/)
     .filter((term) => term.length > 0)
+
+  // let searchTerms: string[]
+
+  // searchTerms = await segmentTextAPI(searchQuery, 'cut')
+
+  // console.log('searchTerms', searchTerms)
 
   // 如果没有有效的搜索词，返回空数组
   if (searchTerms.length === 0) {

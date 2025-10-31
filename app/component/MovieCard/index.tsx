@@ -1,5 +1,5 @@
 // app/hybrid-search/ui/components/MovieCard.tsx
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { Row, Col, Typography, Tag, Space, Divider } from 'antd'
 import createHighlighting, {
   createHighlightsManually,
@@ -19,15 +19,28 @@ const HighLightText = ({
   highlightsField,
   field,
   value,
+  isTooltip = false,
 }: {
   highlightsField: any[]
   field: string
   value: string
+  isTooltip?: boolean
 }) => {
   return (
     <>
       {highlightsField?.length > 0 ? (
         <span
+          style={{
+            ...(isTooltip
+              ? {}
+              : {
+                  color: '#132039',
+                }),
+            fontFamily: 'PingFang SC',
+            fontSize: '16px',
+            fontStyle: 'normal',
+            fontWeight: 400,
+          }}
           dangerouslySetInnerHTML={createHighlighting(
             highlightsField,
             `${field}`,
@@ -75,13 +88,24 @@ const MovieCard: React.FC<MovieCardProps> = ({
     ? movie?.genres?.split(' ').filter((g: string) => g.trim())
     : []
 
-  const highlightsField = createHighlightsManually(movie, searchQuery)
+  const [highlightsField, setHighlightsField] = useState([])
+
+  const getHighlightsField = async () => {
+    const res = await createHighlightsManually(movie, searchQuery)
+    setHighlightsField(res)
+  }
+
+  useEffect(() => {
+    if (searchQuery && movie?.id) {
+      getHighlightsField()
+    }
+  }, [searchQuery, movie?.id])
 
   return (
     <Row className={styles.movieCardRow} gutter={16}>
       <Col span={24}>
         <Row gutter={16}>
-          <Col
+          {/* <Col
             span={4}
             style={{
               display: 'flex',
@@ -89,9 +113,14 @@ const MovieCard: React.FC<MovieCardProps> = ({
               alignItems: 'center',
             }}
           >
-            图片占位
-          </Col>
-          <Col span={20}>
+            <OptimizedMovieImage
+              src={movie?.images?.small}
+              alt={title}
+              width={60}
+              height={80}
+            />
+          </Col> */}
+          <Col span={24}>
             <div className={styles.movieCardContent}>
               <Text className={styles.movieRank}>
                 {String(index + 1).padStart(2, '0')}
@@ -105,7 +134,13 @@ const MovieCard: React.FC<MovieCardProps> = ({
             </div>
 
             <div className={styles.movieDirectors}>
-              <Text className={styles.movieDirectorsLabel}>导演: </Text>
+              <Text
+                className={
+                  styles.movieDirectorsLabel + ' ' + styles.largeFontSize
+                }
+              >
+                导演:{' '}
+              </Text>
               <Text className={styles.movieDirectorsText}>
                 <HighLightText
                   highlightsField={highlightsField}
@@ -116,7 +151,11 @@ const MovieCard: React.FC<MovieCardProps> = ({
             </div>
 
             <div className={styles.movieActors}>
-              <Text className={styles.movieActorsLabel}>主演: </Text>
+              <Text
+                className={styles.movieActorsLabel + ' ' + styles.largeFontSize}
+              >
+                主演:{' '}
+              </Text>
               <Text className={styles.movieActorsText}>
                 <HighLightText
                   highlightsField={highlightsField}
@@ -127,11 +166,19 @@ const MovieCard: React.FC<MovieCardProps> = ({
             </div>
 
             <div className={styles.movieGenres}>
-              <Text className={styles.movieGenresLabel}>类型: </Text>
+              <Text
+                className={styles.movieGenresLabel + ' ' + styles.largeFontSize}
+              >
+                类型:{' '}
+              </Text>
               <Space size={4}>
                 {genres.slice(0, 3).map((genre: string, idx: number) => (
                   <Tag key={idx} className={styles.movieGenreTag}>
-                    {genre}
+                    <HighLightText
+                      highlightsField={highlightsField}
+                      value={genre}
+                      field="genres"
+                    />
                   </Tag>
                 ))}
               </Space>
@@ -157,15 +204,21 @@ const MovieCard: React.FC<MovieCardProps> = ({
           ellipsis={{
             rows: 6,
             tooltip: {
-              color: '#fff',
+              // color: '#eef',
               styles: {
                 body: {
-                  background: '#000',
+                  maxHeight: '300px',
+                  overflow: 'auto',
+                  padding: '18px',
+                },
+                root: {
+                  maxWidth: '500px',
                 },
               },
               title: (
                 <>
                   <HighLightText
+                    isTooltip={true}
                     highlightsField={highlightsField}
                     field="summary"
                     value={summary}

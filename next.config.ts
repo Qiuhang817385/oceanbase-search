@@ -29,6 +29,57 @@ const nextConfig: NextConfig = {
     ],
   },
   webpack: (config, { dev, isServer }) => {
+    // 统一处理 resolve.fallback（服务端和客户端都需要）
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      // 忽略 node-pre-gyp 的可选依赖
+      nock: false,
+      'aws-sdk': false,
+      'mock-aws-s3': false,
+    }
+
+    // 在服务端：排除整个 @mapbox/node-pre-gyp 的 s3_setup.js
+    // 因为它在运行时不会被使用（这些依赖是测试/发布工具用的）
+    if (isServer) {
+      config.resolve.alias = {
+        ...config.resolve.alias,
+        // 如果可能，别名化这些模块为空对象
+      }
+
+      // 添加 NormalModuleReplacementPlugin 来替换问题文件
+      const webpack = require('webpack')
+      config.plugins = config.plugins || []
+      config.plugins.push(
+        new webpack.NormalModuleReplacementPlugin(
+          /node_modules\/@mapbox\/node-pre-gyp\/lib\/util\/s3_setup\.js$/,
+          require.resolve('./lib/webpack-stubs/s3_setup-stub.js')
+        )
+      )
+    } else {
+      // 客户端：完全排除 nodejieba
+      config.externals = config.externals || []
+      if (Array.isArray(config.externals)) {
+        config.externals.push({
+          nodejieba: 'commonjs nodejieba',
+          '@mapbox/node-pre-gyp': 'commonjs @mapbox/node-pre-gyp',
+        })
+      } else {
+        config.externals = [
+          config.externals,
+          {
+            nodejieba: 'commonjs nodejieba',
+            '@mapbox/node-pre-gyp': 'commonjs @mapbox/node-pre-gyp',
+          },
+        ]
+      }
+    }
+
+    // 忽略 .html 文件
+    config.module.rules.push({
+      test: /node_modules\/@mapbox\/node-pre-gyp\/.*\.html$/,
+      use: 'ignore-loader',
+    })
+
     if (!dev && !isServer) {
       // 生产环境优化
       config.optimization.minimize = true
@@ -76,10 +127,6 @@ const nextConfig: NextConfig = {
     }
     return config
   },
-  // assetPrefix: process.env.NODE_ENV === 'production' ? '/static' : '',
-  // env: {
-  //   ASSET_PREFIX: process.env.NODE_ENV === 'production' ? '/static' : '',
-  // },
 }
 
 export default nextConfig

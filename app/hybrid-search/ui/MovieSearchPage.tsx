@@ -45,6 +45,9 @@ interface MovieSearchPageProps {}
 export default function MovieSearchPage({}: MovieSearchPageProps) {
   const defaultQuery = '机器人主题的带反转的科幻电影'
   const [searchQuery, setSearchQuery] = useState(defaultQuery)
+
+  const [inputChangeValue, setInputChangeValue] = useState(defaultQuery)
+
   const [vectorResults, setVectorResults] = useState<MovieData[]>([])
   const [hybridResults, setHybridResults] = useState<MovieData[]>([])
   const [fullTextResults, setFullTextResults] = useState<MovieData[]>([])
@@ -131,6 +134,7 @@ export default function MovieSearchPage({}: MovieSearchPageProps) {
   }
 
   const [showHitCacheInfo, setShowHitCacheInfo] = useState(false)
+  const [tokenizeArray, setTokenizeArray] = useState([])
 
   const useSearchCache = () => {
     const cache = useRef(new Map())
@@ -172,6 +176,24 @@ export default function MovieSearchPage({}: MovieSearchPageProps) {
 
     if (!realQuery.trim()) return
 
+    // 多数据库向量搜索
+    const resTokenize = await fetch('/api/tokenize', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        query: realQuery,
+        limit: 10,
+        databases: ['back'],
+      }),
+    })
+
+    const dataTokenize = await resTokenize.json()
+    const resTokenizeArray = Object.values(
+      dataTokenize?.data?.results?.[0]
+    )?.[0]
+    setTokenizeArray(resTokenizeArray)
     setIsLoading(true)
     try {
       const result = await cachedSearch(realQuery)
@@ -217,6 +239,13 @@ export default function MovieSearchPage({}: MovieSearchPageProps) {
 
   const [hybridRadio, setHybridRadio] = useState(0.5)
 
+  // 对搜索词进行停词过滤
+  const stopWords = ['的', '了', '和', '与', '及', '或', '但', '而']
+
+  const realSearchQuery = Array.from(new Set([searchQuery, ...tokenizeArray]))
+    .filter((word: string) => !stopWords.includes(word))
+    .join(' ')
+
   if (isInitialLoad) {
     return <SearchPageSkeleton />
   }
@@ -246,9 +275,12 @@ export default function MovieSearchPage({}: MovieSearchPageProps) {
         <div className={styles.searchContainer}>
           <Search
             placeholder={defaultQuery}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onSearch={handleSearch}
+            value={inputChangeValue}
+            onChange={(e) => setInputChangeValue(e.target.value)}
+            onSearch={(e) => {
+              setSearchQuery(e)
+              handleSearch(e)
+            }}
             enterButton={
               <Button
                 type="primary"
@@ -274,7 +306,7 @@ export default function MovieSearchPage({}: MovieSearchPageProps) {
                 }
                 onClick={() => {
                   setSearchQuery(query)
-
+                  setInputChangeValue(query)
                   handleSearch(query)
                 }}
               >
@@ -311,33 +343,49 @@ export default function MovieSearchPage({}: MovieSearchPageProps) {
               },
             }}
           >
-            <div className={styles.vectorSearchHeader}>
+            <div
+              className={`${styles.vectorSearchHeader} ${
+                isFTS ? styles.headerLayoutReverse : ''
+              }`}
+            >
               {/* <Avatar
                 icon={<CompassOutlined />}
                 style={{ backgroundColor: '#fa8c16', marginRight: 12 }}
               /> */}
-              <div>
-                <Title level={3} className={styles.searchTitle}>
-                  {isFTS ? '全文搜索' : '向量搜索'}
-                </Title>
-                <Text className={styles.searchSubtitle}>
-                  {isFTS
-                    ? '基于全文搜索的语义相似度匹配'
-                    : '基于深度学习的语义相似度匹配'}
-                </Text>
-              </div>
+              <>
+                <>
+                  <div
+                    className={`${styles.switchOrigin} ${
+                      isFTS ? styles.switchOriginRight : styles.switchOriginLeft
+                    }`}
+                  >
+                    <Title level={3} className={styles.searchTitle}>
+                      {isFTS ? '全文搜索' : '向量搜索'}
+                    </Title>
+                    <Text className={styles.searchSubtitle}>
+                      {isFTS
+                        ? '基于全文搜索的语义相似度匹配'
+                        : '基于深度学习的语义相似度匹配'}
+                    </Text>
+                  </div>
 
-              <div
-                className={styles.switchButton}
-                onClick={() => {
-                  handleSwitchIsFTS()
-                }}
-              >
-                <div className={styles.switchButtonText}>
-                  {isFTS ? '向量搜索' : '全文搜索'}
-                </div>
-                <div className={styles.switchButtonSubText}>点击切换</div>
-              </div>
+                  <div
+                    className={`${styles.switchButton} ${
+                      isFTS
+                        ? `${styles.positionLeft} ${styles.switchBorderRight}`
+                        : `${styles.positionRight} ${styles.switchBorderLeft}`
+                    }`}
+                    onClick={() => {
+                      handleSwitchIsFTS()
+                    }}
+                  >
+                    <div className={`${styles.switchButtonText} `}>
+                      {isFTS ? '向量搜索' : '全文搜索'}
+                    </div>
+                    <div className={styles.switchButtonSubText}>点击切换</div>
+                  </div>
+                </>
+              </>
             </div>
 
             {(isFTS ? fullTextResults : vectorResults).length > 0 ? (
@@ -348,7 +396,7 @@ export default function MovieSearchPage({}: MovieSearchPageProps) {
                     movie={movie}
                     index={index}
                     isHybrid={false}
-                    searchQuery={searchQuery}
+                    searchQuery={realSearchQuery}
                   />
                 )
               })
@@ -395,7 +443,7 @@ export default function MovieSearchPage({}: MovieSearchPageProps) {
                   movie={movie}
                   index={index}
                   isHybrid={true}
-                  searchQuery={searchQuery}
+                  searchQuery={realSearchQuery}
                 />
               ))
             ) : (

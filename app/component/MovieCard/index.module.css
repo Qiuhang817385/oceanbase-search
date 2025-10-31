@@ -4,6 +4,7 @@
   margin-right: 20px;
   padding-left: 20px;
   padding-right: 20px;
+  font-size: 16px;
 }
 
 .movieCardContent {
@@ -22,13 +23,13 @@
 }
 
 .movieYear {
-  font-size: 12px;
+  /* font-size: 12px; */
   color: #999;
   margin-left: 8px;
 }
 
 .movieSummary {
-  font-size: 12px;
+  /* font-size: 12px; */
   color: #666;
   line-height: 1.5;
   display: block;
@@ -36,7 +37,7 @@
 }
 
 .movieSummaryText {
-  font-size: 12px;
+  /* font-size: 12px; */
 }
 
 .movieActors {
@@ -44,12 +45,12 @@
 }
 
 .movieActorsLabel {
-  font-size: 12px;
+  /* font-size: 12px; */
   color: #666;
 }
 
 .movieActorsText {
-  font-size: 12px;
+  /* font-size: 12px; */
 }
 
 .movieGenres {
@@ -57,7 +58,7 @@
 }
 
 .movieGenresLabel {
-  font-size: 12px;
+  /* font-size: 12px; */
   color: #666;
 }
 
@@ -72,12 +73,12 @@
 }
 
 .movieDirectorsLabel {
-  font-size: 12px;
+  /* font-size: 12px; */
   color: #666;
 }
 
 .movieDirectorsText {
-  font-size: 12px;
+  /* font-size: 12px; */
 }
 
 .movieScore {
@@ -85,16 +86,20 @@
 }
 
 .movieScoreLabel {
-  font-size: 12px;
+  /* font-size: 12px; */
   color: #666;
 }
 
 .movieScoreValue {
-  font-size: 12px;
+  /* font-size: 12px; */
   color: #1890ff;
   font-weight: bold;
 }
 
 .movieDivider {
   margin: 12px 0;
+}
+
+.largeFontSize {
+  font-size: 16px;
 }

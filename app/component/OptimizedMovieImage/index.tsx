@@ -1,12 +1,23 @@
 // 使用Next.js Image组件优化
 import Image from 'next/image'
 
-const OptimizedMovieImage = ({ src, alt }: { src: string; alt: string }) => (
+const OptimizedMovieImage = ({
+  src,
+  alt,
+  width = 100,
+  height = 100,
+}: {
+  src: string
+  alt: string
+  width: number
+  height: number
+}) => (
   <Image
     src={src}
     alt={alt}
-    width={120}
-    height={180}
+    width={width}
+    height={height}
+    // sizes="60px"
     placeholder="blur"
     blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
     loading="lazy"
