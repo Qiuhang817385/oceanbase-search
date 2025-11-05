@@ -176,6 +176,7 @@ const MovieCard: React.FC<MovieCardProps> = ({
                   <Tag key={idx} className={styles.movieGenreTag}>
                     <HighLightText
                       highlightsField={highlightsField}
+                      // value={genres.join(' ')}
                       value={genre}
                       field="genres"
                     />

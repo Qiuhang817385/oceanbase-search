@@ -2,7 +2,6 @@
 
 import {
   Input,
-  Slider,
   Button,
   Tag,
   Card,
@@ -10,13 +9,15 @@ import {
   Col,
   Typography,
   message,
-  Space,
+  Modal,
 } from 'antd'
 import { SearchOutlined, SettingOutlined } from '@ant-design/icons'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import SearchPageSkeleton from './SearchPageSkeleton'
 import styles from './styles/MovieSearchPage.module.css'
 import MovieCard from '@/app/component/MovieCard'
+import SettingModal from '@/app/component/SettingModal'
+import { DATABASE_TABLES } from '@/constants'
 
 const { Search } = Input
 const { Text, Title } = Typography
@@ -43,6 +44,10 @@ interface MovieData {
 interface MovieSearchPageProps {}
 
 export default function MovieSearchPage({}: MovieSearchPageProps) {
+  const [modal, modalContextHolder] = Modal.useModal()
+
+  const [settingModalOpen, setSettingModalOpen] = useState(false)
+
   const defaultQuery = '机器人主题的带反转的科幻电影'
   const [searchQuery, setSearchQuery] = useState(defaultQuery)
 
@@ -55,6 +60,11 @@ export default function MovieSearchPage({}: MovieSearchPageProps) {
 
   const [messageApi, contextHolder] = message.useMessage()
 
+  const [hybridRadio, setHybridRadio] = useState(0.7)
+  const [tableName, setTableName] = useState<string>(
+    DATABASE_TABLES.MOVIES_WITH_RATING as string
+  )
+
   // 预设查询标签
   const presetQueries = [
     '周星弛',
@@ -62,12 +72,25 @@ export default function MovieSearchPage({}: MovieSearchPageProps) {
     '莱昂纳多',
     defaultQuery,
     '家庭关系修复的温暖治愈的电影',
-    '诺兰执导的科幻电影推荐',
+    // '诺兰执导的科幻电影推荐',
     '讲女性成长的电影',
+    '小镇悬疑，节奏慢但张力十足',
+    '根据真实事件改编，涉及金融诈骗',
+    '发生在列车上的，具有喜剧色彩的悬疑、惊悚电影',
+    '诈骗题材，具有喜剧、犯罪色彩',
+    '怪兽题材的动画片',
   ]
 
   // 将实际的搜索逻辑提取为独立函数
-  const performSearch = async ({ query }: { query: string }) => {
+  const performSearch = async ({
+    query,
+    hybridRadio,
+    tableName,
+  }: {
+    query?: string
+    hybridRadio?: number
+    tableName?: string
+  }) => {
     try {
       // 并行调用多数据库向量搜索和混合搜索
       const [multiVectorResponse, hybridResponse, fullTextResponse] =
@@ -80,8 +103,8 @@ export default function MovieSearchPage({}: MovieSearchPageProps) {
             },
             body: JSON.stringify({
               query,
-              limit: 10,
-              databases: ['back'],
+              limit: 5,
+              tableName,
             }),
           }),
           // 混合搜索
@@ -92,8 +115,9 @@ export default function MovieSearchPage({}: MovieSearchPageProps) {
             },
             body: JSON.stringify({
               query,
-              limit: 10,
-              databases: ['back'],
+              limit: 5,
+              tableName,
+              hybridRadio,
             }),
           }),
           // 全文搜索
@@ -104,8 +128,8 @@ export default function MovieSearchPage({}: MovieSearchPageProps) {
             },
             body: JSON.stringify({
               query,
-              limit: 10,
-              databases: ['back'],
+              limit: 5,
+              tableName,
             }),
           }),
         ])
@@ -139,21 +163,36 @@ export default function MovieSearchPage({}: MovieSearchPageProps) {
   const useSearchCache = () => {
     const cache = useRef(new Map())
 
-    const cachedSearch = useCallback(async (query: string) => {
-      const cacheKey = query.trim()
-      if (cache.current.has(cacheKey)) {
-        console.log('使用缓存结果：', cacheKey)
-        setShowHitCacheInfo(true)
-        setTimeout(() => {
-          setShowHitCacheInfo(false)
-        }, 3000)
-        return cache.current.get(cacheKey)
-      }
-      console.log('执行新搜索：', cacheKey)
-      const result = await performSearch({ query })
-      cache.current.set(cacheKey, result)
-      return result
-    }, [])
+    const cachedSearch = useCallback(
+      async ({
+        query,
+        hybridRadio = 0.7,
+        tableName,
+      }: {
+        query: string
+        hybridRadio: number
+        tableName: string
+      }) => {
+        const cacheKey = query.trim()
+        if (cache.current.has(cacheKey)) {
+          console.log('使用缓存结果：', cacheKey)
+          setShowHitCacheInfo(true)
+          setTimeout(() => {
+            setShowHitCacheInfo(false)
+          }, 3000)
+          return cache.current.get(cacheKey)
+        }
+        console.log('执行新搜索：', cacheKey)
+        const result = await performSearch({
+          query,
+          hybridRadio: hybridRadio,
+          tableName,
+        })
+        cache.current.set(cacheKey, result)
+        return result
+      },
+      []
+    )
 
     // 清理缓存的方法
     const clearCache = useCallback(() => {
@@ -171,8 +210,13 @@ export default function MovieSearchPage({}: MovieSearchPageProps) {
 
   const { cachedSearch, clearCache, getCacheSize } = useSearchCache()
 
-  const handleSearch = async (query?: string) => {
+  const handleSearch = async ({ query,
+    paramHybridRadio,
+    paramSelectedTable
+   }: { query?: string, paramHybridRadio?: number, paramSelectedTable?: string }) => {
     let realQuery = query || searchQuery
+    let realHybridRadio = paramHybridRadio || hybridRadio
+    let realSelectedTable = paramSelectedTable || tableName
 
     if (!realQuery.trim()) return
 
@@ -184,8 +228,6 @@ export default function MovieSearchPage({}: MovieSearchPageProps) {
       },
       body: JSON.stringify({
         query: realQuery,
-        limit: 10,
-        databases: ['back'],
       }),
     })
 
@@ -196,7 +238,11 @@ export default function MovieSearchPage({}: MovieSearchPageProps) {
     setTokenizeArray(resTokenizeArray)
     setIsLoading(true)
     try {
-      const result = await cachedSearch(realQuery)
+      const result = await cachedSearch({
+        query: realQuery,
+        hybridRadio: realHybridRadio,
+        tableName: realSelectedTable,
+      })
 
       if (result.success) {
         setVectorResults(result.vectorResults)
@@ -231,13 +277,11 @@ export default function MovieSearchPage({}: MovieSearchPageProps) {
   useEffect(() => {
     // 延迟执行初始搜索，让首屏先渲染
     const timer = setTimeout(() => {
-      handleSearch()
+      handleSearch({})
       setIsInitialLoad(false)
     }, 100) // 100ms延迟，确保骨架屏先显示
     return () => clearTimeout(timer)
   }, [])
-
-  const [hybridRadio, setHybridRadio] = useState(0.5)
 
   // 对搜索词进行停词过滤
   const stopWords = ['的', '了', '和', '与', '及', '或', '但', '而']
@@ -253,6 +297,7 @@ export default function MovieSearchPage({}: MovieSearchPageProps) {
   return (
     <div className={styles.container}>
       {contextHolder}
+      {modalContextHolder}
 
       {/* 头部标题区域 */}
       <div className={styles.headerSection}>
@@ -264,6 +309,9 @@ export default function MovieSearchPage({}: MovieSearchPageProps) {
             <Text className={styles.subtitle}>电影混合搜索</Text>
           </div>
           <Button
+            onClick={() => {
+              setSettingModalOpen(true)
+            }}
             type="text"
             icon={<SettingOutlined />}
             className={styles.settingsButton}
@@ -279,7 +327,9 @@ export default function MovieSearchPage({}: MovieSearchPageProps) {
             onChange={(e) => setInputChangeValue(e.target.value)}
             onSearch={(e) => {
               setSearchQuery(e)
-              handleSearch(e)
+              handleSearch({
+                query: e,
+              })
             }}
             enterButton={
               <Button
@@ -307,7 +357,7 @@ export default function MovieSearchPage({}: MovieSearchPageProps) {
                 onClick={() => {
                   setSearchQuery(query)
                   setInputChangeValue(query)
-                  handleSearch(query)
+                  handleSearch({ query })
                 }}
               >
                 {query}
@@ -317,20 +367,6 @@ export default function MovieSearchPage({}: MovieSearchPageProps) {
         </div>
       </div>
 
-      {/* <Row>
-        <Col span={12}></Col>
-        <Col span={12}>
-          <span className={styles.sliderText}>混合搜索权重: {hybridRadio}</span>
-          <Slider
-            max={1}
-            min={0}
-            step={0.1}
-            defaultValue={0.5}
-            onChange={(v) => setHybridRadio(v)}
-            value={hybridRadio}
-          />
-        </Col>
-      </Row> */}
       {/* 双列结果展示 */}
       <Row gutter={24} className={styles.resultsRow}>
         {/* 向量搜索列 */}
@@ -452,6 +488,24 @@ export default function MovieSearchPage({}: MovieSearchPageProps) {
           </Card>
         </Col>
       </Row>
+
+      <SettingModal
+        open={settingModalOpen}
+        setOpen={setSettingModalOpen}
+        onSuccess={({ hybridRadio, selectedTable }) => {
+          clearCache()
+
+          setHybridRadio(hybridRadio)
+          setTableName(selectedTable)
+          setTimeout(() => {
+            handleSearch({
+              paramHybridRadio: hybridRadio,
+              paramSelectedTable: selectedTable,
+            })
+          }, 0)
+        }}
+        title="设置参数"
+      />
     </div>
   )
 }

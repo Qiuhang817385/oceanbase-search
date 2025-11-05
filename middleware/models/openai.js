@@ -28,7 +28,6 @@ class OpenAIModel {
         dimensions: this.dimensions,
       })
 
-      console.log('resp', resp);
       return resp.data[0].embedding;
     } catch (error) {
       console.log(`Failed to create embeddings ${error}`)

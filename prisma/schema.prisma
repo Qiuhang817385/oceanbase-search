@@ -84,3 +84,18 @@ model MoviesWithRating {
 
   @@map("movies")
 }
+
+model ChineseMovies {
+  id           BigInt                    @id @default(autoincrement())
+  movieId      BigInt?                   @map("movie_id")
+  title        String?                   @db.VarChar(500)
+  originalTitle String?                  @map("original_title") @db.VarChar(500)
+  year         Int?
+  summary      String?                   @db.LongText
+  genres       String?                   @db.LongText
+  directors    String?                   @db.LongText
+  actors       String?                   @db.LongText
+  embedding    Unsupported("VECTOR(1024)")?
+
+  @@map("chinese_movies")
+}

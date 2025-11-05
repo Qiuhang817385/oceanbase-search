@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { multiDB } from '@/lib/multi-prisma'
 import { initializeModel } from '@/middleware/model.js'
-import { DATABASE_TABLES, DATABASE_KEYS, getTableName } from '@/constants'
+import { DATABASE_TABLES } from '@/constants'
 
-type SingleDBResult = { results: any[]; searchType: string }
 type MultiDBResponse = {
   results: any[]
   searchType: string
@@ -28,7 +27,7 @@ export async function POST(request: NextRequest) {
     const {
       query,
       limit = 10,
-      databases = ['main', 'back'],
+      tableName = DATABASE_TABLES.MOVIES_WITH_RATING,
     } = await request.json()
 
     if (!query) {
@@ -43,12 +42,11 @@ export async function POST(request: NextRequest) {
     const queryEmbedding = await model.embed(query)
 
     // 使用 Promise.race 来控制超时
-    const searchPromise = performMultiDatabaseSearch(
+    const searchPromise = performMultiDatabaseSearch({
       queryEmbedding,
-      safeLimit,
-      query,
-      databases
-    )
+      limit: safeLimit,
+      tableName,
+    })
     const result = (await Promise.race([
       searchPromise,
       timeoutPromise,
@@ -58,21 +56,16 @@ export async function POST(request: NextRequest) {
       success: true,
       data: {
         query,
-        results: result.results,
-        total: result.results.length,
-        searchType: result.searchType,
         embeddingDimensions: queryEmbedding.length,
-        message: result.message,
-        performance: result.performance,
-        databaseResults: result.databaseResults,
+        ...(result || {}),
       },
     })
   } catch (error: any) {
-    console.error('多数据库向量搜索失败:', error)
+    console.error('向量搜索失败:', error)
     return NextResponse.json(
       {
         success: false,
-        error: '多数据库向量搜索失败',
+        error: '向量搜索失败',
         details: error?.message || '未知错误',
       },
       { status: 500 }
@@ -81,28 +74,30 @@ export async function POST(request: NextRequest) {
 }
 
 // 多数据库向量搜索函数
-async function performMultiDatabaseSearch(
-  queryEmbedding: number[],
-  limit: number,
-  query: string,
-  databases: string[]
-) {
+async function performMultiDatabaseSearch({
+  queryEmbedding,
+  limit,
+  tableName,
+}: {
+  queryEmbedding: number[]
+  limit: number
+  tableName: string
+}) {
   const startTime = Date.now()
   const databaseResults: any = {}
   let allResults: any[] = []
-  let searchType = 'multi_database_search'
+  let searchType = 'vector-search'
 
   // 并行搜索所有指定的数据库
-  const searchPromises = databases.map(async (dbKey) => {
+  const searchPromises = ['back'].map(async (dbKey) => {
     try {
       const client = multiDB.getClient(dbKey as 'main' | 'back')
-      const results = await searchSingleDatabase(
+      const results = await searchSingleDatabase({
         client,
         queryEmbedding,
         limit,
-        query,
-        dbKey
-      )
+        tableName,
+      })
 
       databaseResults[dbKey] = {
         success: true,
@@ -128,18 +123,8 @@ async function performMultiDatabaseSearch(
 
     // 合并所有结果
     allResults = resultsArrays.flat()
-
-    // 按相似度排序（如果有 distance 字段）
-    allResults.sort((a, b) => {
-      const distanceA = a.distance || 1
-      const distanceB = b.distance || 1
-      return distanceA - distanceB
-    })
-
-    // 限制最终结果数量
-    allResults = allResults.slice(0, limit)
   } catch (error: any) {
-    console.error('多数据库搜索执行失败:', error.message)
+    console.error('向量搜索执行失败:', error.message)
     throw error
   }
 
@@ -148,97 +133,58 @@ async function performMultiDatabaseSearch(
     executionTime: endTime - startTime,
     searchType,
     embeddingDimensions: queryEmbedding.length,
-    databasesSearched: databases,
     totalResults: allResults.length,
   }
 
   return {
     results: allResults,
     searchType,
-    message: `多数据库搜索完成，共找到 ${allResults.length} 条结果`,
+    message: `向量搜索完成，共找到 ${allResults.length} 条结果`,
     performance,
     databaseResults,
   }
 }
 
 // 单个数据库搜索函数
-async function searchSingleDatabase(
-  client: any,
-  queryEmbedding: number[],
-  limit: number,
-  query: string,
-  dbKey: string
-) {
+async function searchSingleDatabase({
+  client,
+  queryEmbedding,
+  limit,
+  tableName,
+}: {
+  client: any
+  queryEmbedding: number[]
+  limit: number
+  tableName: string
+}) {
   let vectorResults: any[] = []
-  let searchType = 'text_search'
-
-  // 根据数据库类型选择表名
-  const tableName = getTableName(dbKey)
+  let searchType = 'vector-search'
 
   try {
     // 方案1: 使用 embedding 字段进行向量搜索
-    console.log(`🔍 [${dbKey}] 尝试使用 embedding 字段进行向量搜索...`)
+    console.log(`🔍  使用 embedding 字段进行向量搜索...`)
 
     let vectorSearchSQL = ''
 
-    if (dbKey === 'back') {
-      vectorSearchSQL = `
-      SELECT 
-        id, 
-        movie_id, 
-        title, 
-        original_title, 
-        year, 
-        summary, 
-        genres, 
-        directors, 
-        actors 
-      FROM hybrid_search('${DATABASE_TABLES.MOVIES_WITH_RATING}', 
+    vectorSearchSQL = `
+      SELECT * FROM hybrid_search('${tableName}', 
         '{
           "knn": {
             "field": "embedding", 
             "query_vector": [${queryEmbedding.join(',')}], 
-            "k": 20,
+            "k": 50,
             "num_candidates": 100
-          }
+          },
+          "size":"50"
         }') 
-      LIMIT 10
+      LIMIT ${limit}
     `
-    } else {
-      vectorSearchSQL = `
-      SELECT 
-        id, 
-        title, 
-        original_title,
-        summary, 
-        countries,
-        languages,
-        year, 
-        genres,
-        directors,
-        actors,
-        rating_score,
-        rating_count,
-        images,
-        l2_distance(embedding, JSON_ARRAY(${queryEmbedding
-          .map(() => '?')
-          .join(',')})) as distance
-      FROM ${tableName} 
-      WHERE embedding IS NOT NULL
-      ORDER BY distance ASC
-      LIMIT ?
-    `
-    }
 
     vectorResults = await client.$queryRawUnsafe(vectorSearchSQL)
 
-    searchType = 'vector_search'
-
-    console.log(
-      `✅ [${dbKey}] 向量搜索成功，找到 ${vectorResults.length} 条结果`
-    )
+    console.log(`✅ 向量搜索成功，找到 ${vectorResults.length} 条结果`)
   } catch (vectorError: any) {
-    console.log(`❌ [${dbKey}] 向量搜索失败:`, vectorError?.message)
+    console.log(`❌ 向量搜索失败:`, vectorError?.message)
   }
 
   // 处理 BigInt 序列化问题
@@ -251,46 +197,5 @@ async function searchSingleDatabase(
   return {
     results: processedResults,
     searchType,
-  }
-}
-
-// GET /api/multi-hybrid-search - 获取多数据库配置和健康状态
-export async function GET() {
-  try {
-    const healthCheck = await multiDB.healthCheck()
-
-    return NextResponse.json({
-      success: true,
-      config: {
-        databases: {
-          main: {
-            url: process.env.DATABASE_URL ? 'configured' : 'not configured',
-            status: healthCheck.main ? 'healthy' : 'unhealthy',
-          },
-          back: {
-            url: process.env.DATABASE_URL_BACK
-              ? 'configured'
-              : 'not configured',
-            status: healthCheck.back ? 'healthy' : 'unhealthy',
-          },
-        },
-        embeddingProvider: process.env.EMBEDDING_PROVIDER,
-        embeddingModel: process.env.EMBEDDING_MODEL,
-        dimensions: process.env.DIMENSIONS,
-        baseUrl: process.env.BASE_URL,
-        timeout: REQUEST_TIMEOUT,
-      },
-      health: healthCheck,
-    })
-  } catch (error: any) {
-    console.error('获取多数据库配置失败:', error)
-    return NextResponse.json(
-      {
-        success: false,
-        error: '获取配置失败',
-        details: error?.message || '未知错误',
-      },
-      { status: 500 }
-    )
   }
 }

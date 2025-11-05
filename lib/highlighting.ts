@@ -325,19 +325,66 @@ function createHighlighting(
   fieldName: string,
   fieldValue: string
 ): HighlightResult {
-  const highlightedStrings = getHighlightsHTML(highlightsField, fieldName)
+  // 找到对应字段的高亮数据
+  const fieldHighlight = highlightsField.find((h) => h.path === fieldName)
 
+  if (!fieldHighlight || !fieldHighlight.texts) {
+    return { __html: fieldValue }
+  }
+
+  // 从完整的 texts 中提取与 fieldValue 匹配的部分
+  const fullText = fieldHighlight.texts.map((t) => t.value).join('')
+
+  // 如果 fieldValue 是完整文本的一部分
+  if (fullText.includes(fieldValue) && fieldValue !== fullText) {
+    const startIndex = fullText.indexOf(fieldValue)
+    const endIndex = startIndex + fieldValue.length
+
+    // 遍历 texts，找到对应的片段
+    let currentIndex = 0
+    let result = ''
+
+    for (const text of fieldHighlight.texts) {
+      const textEndIndex = currentIndex + text.value.length
+
+      // 如果当前片段与目标范围有交集
+      if (currentIndex < endIndex && textEndIndex > startIndex) {
+        const overlapStart = Math.max(0, startIndex - currentIndex)
+        const overlapEnd = Math.min(text.value.length, endIndex - currentIndex)
+        const overlapText = text.value.substring(overlapStart, overlapEnd)
+
+        if (text.type === 'hit') {
+          result += `<strong style='color:#ffa21a'>${overlapText}</strong>`
+        } else {
+          result += overlapText
+        }
+      }
+
+      currentIndex = textEndIndex
+      if (currentIndex >= endIndex) break
+    }
+
+    return { __html: result || fieldValue }
+  }
+
+  // 原有逻辑：fieldValue 是完整字符串
+  const highlightedStrings = getHighlightsHTML(highlightsField, fieldName)
   const nonHighlightedStrings = highlightsField
     .filter((h) => h.path === fieldName)
     .map((h) => {
       return h.texts.map((t) => t.value).join('')
     })
 
+  let result = fieldValue
   highlightedStrings.forEach((str, idx) => {
-    fieldValue = fieldValue.replace(nonHighlightedStrings[idx], str)
+    if (nonHighlightedStrings[idx] === fieldValue) {
+      result = str
+    } else if (fieldValue.includes(nonHighlightedStrings[idx])) {
+      result = fieldValue.replace(nonHighlightedStrings[idx], str)
+    }
   })
 
-  return { __html: fieldValue }
+  return { __html: result }
 }
 
 export default createHighlighting
