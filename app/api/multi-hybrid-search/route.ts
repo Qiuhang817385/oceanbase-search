@@ -111,8 +111,7 @@ async function performMultiDatabaseSearch({
       databaseResults[dbKey] = {
         success: true,
         count: results.results.length,
-        searchType: results.searchType,
-        results: results.results,
+        ...(results || {}),
       }
       return results.results
     } catch (error: any) {
@@ -171,12 +170,12 @@ async function searchSingleDatabase({
 }) {
   let vectorResults: any[] = []
   let searchType = 'multi-hybrid-search'
+  let vectorSearchSQL = ''
+  let vectorSearchSQLText = ''
 
   try {
     // 方案1: 使用 embedding 字段进行向量搜索
     console.log(`🔍 multi-hybrid-search 混合搜索...`)
-
-    let vectorSearchSQL = ''
 
     // vectorSearchSQL = `
     //   SELECT * FROM hybrid_search('${DATABASE_TABLES.MOVIES_WITH_RATING}',
@@ -253,6 +252,52 @@ async function searchSingleDatabase({
         LIMIT ${limit}
       `
 
+    vectorSearchSQLText = `
+      SELECT * FROM hybrid_search('${tableName}',
+        '{
+          "query": {
+            "query_string": {
+              "fields": [
+                "directors^3",
+                "actors^2.5",
+                "genres^1.5",
+                "summary"
+              ],
+              "query": "${query}"
+            }
+          },
+          "knn": [{
+            "field": "embedding",
+            "k": 50,
+            "num_candidates": 100,
+            "query_vector": [$queryEmbedding]
+          },
+          {
+            "field": "embedding",
+            "k": 50,
+            "num_candidates": 100,
+            "query_vector": [$queryEmbedding],
+            "filter" : {
+                "query_string": {
+                "fields": [
+                    "directors",
+                    "actors",
+                    "genres"
+                ],
+                "query": "${query}"
+                }
+            }
+          }],
+          "rank": {
+            "rrf": {}
+          },
+          "hybrid_radio": "${hybridRadio}",
+          "size":"50"
+        }')
+
+      LIMIT ${limit}
+    `
+
     vectorResults = await client.$queryRawUnsafe(vectorSearchSQL)
 
     console.log(`✅ 混合搜索成功，找到 ${vectorResults.length} 条结果`)
@@ -269,6 +314,7 @@ async function searchSingleDatabase({
 
   return {
     results: processedResults,
+    sqlText: vectorSearchSQLText,
     searchType,
     hybridRadio,
   }

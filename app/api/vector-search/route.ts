@@ -102,8 +102,7 @@ async function performMultiDatabaseSearch({
       databaseResults[dbKey] = {
         success: true,
         count: results.results.length,
-        searchType: results.searchType,
-        results: results.results,
+        ...(results || {}),
       }
       return results.results
     } catch (error: any) {
@@ -159,12 +158,12 @@ async function searchSingleDatabase({
 }) {
   let vectorResults: any[] = []
   let searchType = 'vector-search'
+  let vectorSearchSQL = ''
+  let vectorSearchSQLText = ''
 
   try {
     // 方案1: 使用 embedding 字段进行向量搜索
     console.log(`🔍  使用 embedding 字段进行向量搜索...`)
-
-    let vectorSearchSQL = ''
 
     vectorSearchSQL = `
       SELECT * FROM hybrid_search('${tableName}', 
@@ -172,6 +171,20 @@ async function searchSingleDatabase({
           "knn": {
             "field": "embedding", 
             "query_vector": [${queryEmbedding.join(',')}], 
+            "k": 50,
+            "num_candidates": 100
+          },
+          "size":"50"
+        }') 
+      LIMIT ${limit}
+    `
+
+    vectorSearchSQLText = `
+      SELECT * FROM hybrid_search('${tableName}', 
+        '{
+          "knn": {
+            "field": "embedding", 
+            "query_vector": [$queryEmbedding], 
             "k": 50,
             "num_candidates": 100
           },
@@ -197,5 +210,6 @@ async function searchSingleDatabase({
   return {
     results: processedResults,
     searchType,
+    sqlText: vectorSearchSQLText,
   }
 }

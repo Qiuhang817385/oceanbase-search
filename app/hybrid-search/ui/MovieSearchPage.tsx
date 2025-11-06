@@ -57,6 +57,11 @@ export default function MovieSearchPage({}: MovieSearchPageProps) {
   const [hybridResults, setHybridResults] = useState<MovieData[]>([])
   const [fullTextResults, setFullTextResults] = useState<MovieData[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [sqlTexts, setSqlTexts] = useState<{
+    vectorSearch?: string
+    hybridSearch?: string
+    fullTextSearch?: string
+  }>({})
 
   const [messageApi, contextHolder] = message.useMessage()
 
@@ -148,6 +153,17 @@ export default function MovieSearchPage({}: MovieSearchPageProps) {
         fullTextResults: fullTextData.success
           ? fullTextData.data.results || []
           : [],
+        sqlTexts: {
+          vectorSearch: multiVectorData.success
+            ? multiVectorData.data?.databaseResults?.back?.sqlText || ''
+            : '',
+          hybridSearch: hybridData.success
+            ? hybridData.data?.databaseResults?.back?.sqlText || ''
+            : '',
+          fullTextSearch: fullTextData.success
+            ? fullTextData.data?.databaseResults?.back?.sqlText || ''
+            : '',
+        },
         success:
           multiVectorData.success || hybridData.success || fullTextData.success,
       }
@@ -210,10 +226,15 @@ export default function MovieSearchPage({}: MovieSearchPageProps) {
 
   const { cachedSearch, clearCache, getCacheSize } = useSearchCache()
 
-  const handleSearch = async ({ query,
+  const handleSearch = async ({
+    query,
     paramHybridRadio,
-    paramSelectedTable
-   }: { query?: string, paramHybridRadio?: number, paramSelectedTable?: string }) => {
+    paramSelectedTable,
+  }: {
+    query?: string
+    paramHybridRadio?: number
+    paramSelectedTable?: string
+  }) => {
     let realQuery = query || searchQuery
     let realHybridRadio = paramHybridRadio || hybridRadio
     let realSelectedTable = paramSelectedTable || tableName
@@ -248,6 +269,9 @@ export default function MovieSearchPage({}: MovieSearchPageProps) {
         setVectorResults(result.vectorResults)
         setHybridResults(result.hybridResults)
         setFullTextResults(result.fullTextResults)
+        if (result.sqlTexts) {
+          setSqlTexts(result.sqlTexts)
+        }
       }
     } catch (error) {
       console.error('搜索请求失败:', error)
@@ -505,6 +529,7 @@ export default function MovieSearchPage({}: MovieSearchPageProps) {
           }, 0)
         }}
         title="设置参数"
+        sqlTexts={sqlTexts}
       />
     </div>
   )

@@ -87,9 +87,8 @@ async function performMultiDatabaseSearch({
 
       databaseResults[dbKey] = {
         success: true,
-        count: results.length,
-        searchType: results.searchType,
-        results: results.results,
+        count: results.results.length,
+        ...(results || {}),
       }
 
       return results.results
@@ -146,6 +145,7 @@ async function searchSingleDatabase({
 }) {
   let fullTextSearchResults: any[] = []
   let searchType = 'text_search'
+  let textSearchSQL = ''
 
   // 根据数据库类型选择表名
   try {
@@ -155,7 +155,7 @@ async function searchSingleDatabase({
     let searchResults: any[] = []
 
     // 备用数据库使用 hybrid_search 函数
-    const textSearchSQL = `
+    textSearchSQL = `
         SELECT * FROM hybrid_search('${tableName}', 
           '{
             "query": {
@@ -195,5 +195,6 @@ async function searchSingleDatabase({
   return {
     results: processedResults,
     searchType,
+    sqlText: textSearchSQL,
   }
 }

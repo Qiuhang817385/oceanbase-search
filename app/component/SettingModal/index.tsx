@@ -1,5 +1,6 @@
 import React, { ReactNode, useState } from 'react'
-import { Col, Modal, Row, Select, Slider } from 'antd'
+import { Col, Modal, Row, Select, Slider, Collapse, Space } from 'antd'
+import Code from '@leafygreen-ui/code'
 
 type SettingModalProps = {
   open: boolean
@@ -12,6 +13,11 @@ type SettingModalProps = {
   closable?: boolean
   maskClosable?: boolean
   width?: number | string
+  sqlTexts?: {
+    vectorSearch?: string
+    hybridSearch?: string
+    fullTextSearch?: string
+  }
 }
 
 const SettingModal: React.FC<SettingModalProps> = ({
@@ -24,6 +30,7 @@ const SettingModal: React.FC<SettingModalProps> = ({
   closable = true,
   maskClosable = true,
   width = 420,
+  sqlTexts,
 }) => {
   const [hybridRadio, setHybridRadio] = useState(0.7)
   const [selectedTable, setSelectedTable] = useState('movies')
@@ -48,7 +55,7 @@ const SettingModal: React.FC<SettingModalProps> = ({
       onOk={handleOk}
       styles={{
         content: {
-          width: '450px',
+          width: '750px',
         },
       }}
       onCancel={handleCancel}
@@ -62,31 +69,86 @@ const SettingModal: React.FC<SettingModalProps> = ({
     >
       <Row>
         <Col span={24}>
-          <span>混合搜索权重: {hybridRadio}</span>
-          <Slider
-            max={1}
-            min={0}
-            step={0.1}
-            onChange={(v) => setHybridRadio(v)}
-            value={hybridRadio}
-          />
+          <Space direction="vertical" style={{ width: '100%' }}>
+            <span>混合搜索权重: {hybridRadio}</span>
+            <Slider
+              style={{ width: '70%' }}
+              max={1}
+              min={0}
+              step={0.1}
+              onChange={(v) => setHybridRadio(v)}
+              value={hybridRadio}
+            />
+          </Space>
         </Col>
         <Col span={24}>
-          <Select
-            placeholder="选择查询表"
-            options={[
-              {
-                label: 'movies',
-                value: 'movies',
-              },
-              {
-                label: 'chinese_movies',
-                value: 'chinese_movies',
-              },
-            ]}
-            onChange={(value) => setSelectedTable(value)}
-          />
+          <Space direction="vertical" style={{ width: '100%' }}>
+            <span>选择查询表: {selectedTable}</span>
+            <Select
+              style={{ width: '70%' }}
+              value={selectedTable}
+              placeholder="选择查询表"
+              options={[
+                {
+                  label: 'movies',
+                  value: 'movies',
+                },
+                {
+                  label: 'chinese_movies',
+                  value: 'chinese_movies',
+                },
+              ]}
+              onChange={(value) => setSelectedTable(value)}
+            />
+          </Space>
         </Col>
+        {sqlTexts && (
+          <Col span={24} style={{ marginTop: 16 }}>
+            <Collapse
+              items={[
+                {
+                  key: 'vector-search',
+                  label: '向量搜索 SQL',
+                  children: sqlTexts.vectorSearch ? (
+                    <div style={{ marginTop: 8 }}>
+                      <Code language="sql" showLineNumbers>
+                        {sqlTexts.vectorSearch}
+                      </Code>
+                    </div>
+                  ) : (
+                    <span style={{ color: '#999' }}>暂无 SQL</span>
+                  ),
+                },
+                {
+                  key: 'hybrid-search',
+                  label: '混合搜索 SQL',
+                  children: sqlTexts.hybridSearch ? (
+                    <div style={{ marginTop: 8 }}>
+                      <Code language="sql" showLineNumbers>
+                        {sqlTexts.hybridSearch}
+                      </Code>
+                    </div>
+                  ) : (
+                    <span style={{ color: '#999' }}>暂无 SQL</span>
+                  ),
+                },
+                {
+                  key: 'full-text-search',
+                  label: '全文搜索 SQL',
+                  children: sqlTexts.fullTextSearch ? (
+                    <div style={{ marginTop: 8 }}>
+                      <Code language="sql" showLineNumbers>
+                        {sqlTexts.fullTextSearch}
+                      </Code>
+                    </div>
+                  ) : (
+                    <span style={{ color: '#999' }}>暂无 SQL</span>
+                  ),
+                },
+              ]}
+            />
+          </Col>
+        )}
       </Row>
     </Modal>
   )
