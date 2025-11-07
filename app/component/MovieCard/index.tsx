@@ -201,7 +201,7 @@ const MovieCard: React.FC<MovieCardProps> = ({
       </Col>
       <Col span={24}>
         <Paragraph
-          className={styles.movieSummaryText}
+          className={styles.movieSummaryText + ' ' + styles.summaryBottom}
           ellipsis={{
             rows: 6,
             tooltip: {

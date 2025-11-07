@@ -1,9 +1,7 @@
 /* 电影卡片样式 */
 .movieCardRow {
-  margin-left: 20px;
-  margin-right: 20px;
-  padding-left: 20px;
-  padding-right: 20px;
+  padding-left: 24px;
+  padding-right: 24px;
   font-size: 16px;
 }
 
@@ -26,6 +24,7 @@
   /* font-size: 12px; */
   color: #999;
   margin-left: 8px;
+  font-size: 20px;
 }
 
 .movieSummary {
@@ -41,7 +40,7 @@
 }
 
 .movieActors {
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 
 .movieActorsLabel {
@@ -54,7 +53,7 @@
 }
 
 .movieGenres {
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 
 .movieGenresLabel {
@@ -69,7 +68,7 @@
 }
 
 .movieDirectors {
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 
 .movieDirectorsLabel {
@@ -97,9 +96,13 @@
 }
 
 .movieDivider {
-  margin: 12px 0;
+  margin: 24px 0;
 }
 
 .largeFontSize {
   font-size: 16px;
+}
+
+.summaryBottom:global(.ant-typography) {
+  margin-bottom: 0px;
 }
