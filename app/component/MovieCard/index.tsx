@@ -173,14 +173,14 @@ const MovieCard: React.FC<MovieCardProps> = ({
               </Text>
               <Space size={4}>
                 {genres.slice(0, 3).map((genre: string, idx: number) => (
-                  <Tag key={idx} className={styles.movieGenreTag}>
+                  <div key={idx} className={styles.movieGenreTag}>
                     <HighLightText
                       highlightsField={highlightsField}
                       // value={genres.join(' ')}
                       value={genre}
                       field="genres"
                     />
-                  </Tag>
+                  </div>
                 ))}
               </Space>
             </div>

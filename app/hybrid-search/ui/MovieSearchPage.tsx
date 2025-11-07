@@ -72,7 +72,7 @@ export default function MovieSearchPage({}: MovieSearchPageProps) {
 
   // 预设查询标签
   const presetQueries = [
-    '周星弛',
+    '周星驰',
     '曾志伟',
     '莱昂纳多',
     defaultQuery,

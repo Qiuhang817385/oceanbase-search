@@ -2,6 +2,13 @@ import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import './globals.css'
 
+import setupLocatorUI from '@locator/runtime'
+
+if (process.env.NODE_ENV === 'development') {
+  console.log('setupLocatorUI')
+  setupLocatorUI()
+}
+
 const geistSans = Geist({
   variable: '--font-geist-sans',
   subsets: ['latin'],
