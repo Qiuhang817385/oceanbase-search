@@ -64,8 +64,7 @@ async function performMultiDatabaseSearch({ query }: { query: string }) {
 
       databaseResults[dbKey] = {
         success: true,
-        searchType: results.searchType,
-        results: results.results,
+        ...(results || {}),
       }
       return results.results
     } catch (error: any) {
@@ -115,12 +114,13 @@ async function searchSingleDatabase({
 }) {
   let fullTextSearchResults: any[] = []
   let searchType = 'tokenize'
+  let textSearchSQL = ''
 
   try {
     console.log(`🔍 tokenize 分词...`)
     let searchResults: any[] = []
     // 备用数据库使用 hybrid_search 函数
-    const textSearchSQL = `
+    textSearchSQL = `
         SELECT tokenize('${query}', 'IK');
       `
     searchResults = await client.$queryRawUnsafe(textSearchSQL)
@@ -134,5 +134,6 @@ async function searchSingleDatabase({
   return {
     results: fullTextSearchResults,
     searchType,
+    sqlText: textSearchSQL,
   }
 }

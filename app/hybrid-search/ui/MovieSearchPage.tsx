@@ -61,6 +61,7 @@ export default function MovieSearchPage({}: MovieSearchPageProps) {
     vectorSearch?: string
     hybridSearch?: string
     fullTextSearch?: string
+    tokenize?: string
   }>({})
 
   const [messageApi, contextHolder] = message.useMessage()
@@ -174,7 +175,7 @@ export default function MovieSearchPage({}: MovieSearchPageProps) {
   }
 
   const [showHitCacheInfo, setShowHitCacheInfo] = useState(false)
-  const [tokenizeArray, setTokenizeArray] = useState([])
+  const [tokenizeArray, setTokenizeArray] = useState<string[]>([])
 
   const useSearchCache = () => {
     const cache = useRef(new Map())
@@ -255,8 +256,18 @@ export default function MovieSearchPage({}: MovieSearchPageProps) {
     const dataTokenize = await resTokenize.json()
     const resTokenizeArray = Object.values(
       dataTokenize?.data?.results?.[0]
-    )?.[0]
-    setTokenizeArray(resTokenizeArray)
+    )?.[0] as string[]
+    setTokenizeArray(resTokenizeArray || [])
+    // 保存 tokenize 的 SQL
+    if (
+      dataTokenize.success &&
+      dataTokenize.data?.databaseResults?.back?.sqlText
+    ) {
+      setSqlTexts((prev) => ({
+        ...prev,
+        tokenize: dataTokenize.data.databaseResults.back.sqlText,
+      }))
+    }
     setIsLoading(true)
     try {
       const result = await cachedSearch({
@@ -270,7 +281,10 @@ export default function MovieSearchPage({}: MovieSearchPageProps) {
         setHybridResults(result.hybridResults)
         setFullTextResults(result.fullTextResults)
         if (result.sqlTexts) {
-          setSqlTexts(result.sqlTexts)
+          setSqlTexts((prev) => ({
+            ...prev,
+            ...(result.sqlTexts || {}),
+          }))
         }
       }
     } catch (error) {
@@ -528,6 +542,7 @@ export default function MovieSearchPage({}: MovieSearchPageProps) {
             })
           }, 0)
         }}
+        tokenizeArray={tokenizeArray}
         title="设置参数"
         sqlTexts={sqlTexts}
       />

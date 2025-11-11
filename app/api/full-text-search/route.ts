@@ -161,7 +161,7 @@ async function searchSingleDatabase({
             "query": {
               "query_string": {
                 "fields": [
-                  "directors^3", 
+                  "directors^2.5", 
                   "actors^2.5", 
                   "genres^1.5", 
                   "summary"

@@ -17,7 +17,9 @@ type SettingModalProps = {
     vectorSearch?: string
     hybridSearch?: string
     fullTextSearch?: string
+    tokenize?: string
   }
+  tokenizeArray?: string[]
 }
 
 const SettingModal: React.FC<SettingModalProps> = ({
@@ -31,6 +33,7 @@ const SettingModal: React.FC<SettingModalProps> = ({
   maskClosable = true,
   width = 420,
   sqlTexts,
+  tokenizeArray,
 }) => {
   const [hybridRadio, setHybridRadio] = useState(0.7)
   const [selectedTable, setSelectedTable] = useState('movies')
@@ -140,6 +143,20 @@ const SettingModal: React.FC<SettingModalProps> = ({
                       <Code language="sql" showLineNumbers>
                         {sqlTexts.fullTextSearch}
                       </Code>
+                    </div>
+                  ) : (
+                    <span style={{ color: '#999' }}>暂无 SQL</span>
+                  ),
+                },
+                {
+                  key: 'tokenize',
+                  label: '分词 SQL',
+                  children: sqlTexts.tokenize ? (
+                    <div style={{ marginTop: 8 }}>
+                      <Code language="sql" showLineNumbers>
+                        {sqlTexts.tokenize}
+                      </Code>
+                      <span>分词结果: {tokenizeArray?.join(' ')}</span>
                     </div>
                   ) : (
                     <span style={{ color: '#999' }}>暂无 SQL</span>

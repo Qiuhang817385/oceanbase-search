@@ -212,9 +212,9 @@ async function searchSingleDatabase({
             "query": {
               "query_string": {
                 "fields": [
-                  "directors^3",
-                  "actors^2.5",
-                  "genres^1.5",
+                  "directors^2.5", 
+                  "actors^2.5", 
+                  "genres^1.5", 
                   "summary"
                 ],
                 "query": "${query}"
@@ -229,17 +229,19 @@ async function searchSingleDatabase({
             {
               "field": "embedding",
               "k": 50,
+              "boost" : "0.3",
               "num_candidates": 100,
               "query_vector": [${queryEmbedding.join(',')}],
               "filter" : {
                   "query_string": {
-                  "fields": [
-                      "directors",
-                      "actors",
-                      "genres"
-                  ],
-                  "query": "${query}"
-                  }
+                    "fields": [
+                      "directors^2.5", 
+                      "actors^2.5", 
+                      "genres^1.5", 
+                      "summary"
+                    ], 
+                    "query": "${query}"
+                  },
               }
             }],
             "rank": {
@@ -258,7 +260,7 @@ async function searchSingleDatabase({
           "query": {
             "query_string": {
               "fields": [
-                "directors^3",
+                "directors^2.5",
                 "actors^2.5",
                 "genres^1.5",
                 "summary"
@@ -275,17 +277,19 @@ async function searchSingleDatabase({
           {
             "field": "embedding",
             "k": 50,
+            "boost" : "0.3",
             "num_candidates": 100,
             "query_vector": [$queryEmbedding],
             "filter" : {
                 "query_string": {
-                "fields": [
-                    "directors",
-                    "actors",
-                    "genres"
-                ],
-                "query": "${query}"
-                }
+                  "fields": [
+                      "directors^2.5", 
+                      "actors^2.5", 
+                      "genres^1.5", 
+                      "summary"
+                  ], 
+                  "query": "${query}"
+                },
             }
           }],
           "rank": {
