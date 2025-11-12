@@ -214,7 +214,7 @@ async function searchSingleDatabase({
                 "fields": [
                   "directors^2.5", 
                   "actors^2.5", 
-                  "genres^1.5", 
+                  "genres^2.5", 
                   "summary"
                 ],
                 "query": "${query}"
@@ -235,10 +235,9 @@ async function searchSingleDatabase({
               "filter" : {
                   "query_string": {
                     "fields": [
-                      "directors^2.5", 
-                      "actors^2.5", 
-                      "genres^1.5", 
-                      "summary"
+                      "directors", 
+                      "actors", 
+                      "genres", 
                     ], 
                     "query": "${query}"
                   },
@@ -262,7 +261,7 @@ async function searchSingleDatabase({
               "fields": [
                 "directors^2.5",
                 "actors^2.5",
-                "genres^1.5",
+                "genres^2.5",
                 "summary"
               ],
               "query": "${query}"
@@ -283,10 +282,9 @@ async function searchSingleDatabase({
             "filter" : {
                 "query_string": {
                   "fields": [
-                      "directors^2.5", 
-                      "actors^2.5", 
-                      "genres^1.5", 
-                      "summary"
+                      "directors", 
+                      "actors", 
+                      "genres", 
                   ], 
                   "query": "${query}"
                 },
