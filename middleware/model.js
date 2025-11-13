@@ -5,11 +5,10 @@ let modelInstance = null;
 
 async function initializeModel () {
   if (!modelInstance) {
-    // const embeddingProvider = process.env.EMBEDDING_PROVIDER || "azure_openai";
 
     let model;
     model = new Models.openai(process.env.EMBEDDING_APIKEY);
-    console.log("Using OpenAI embeddings");
+    console.log("Using bailian embeddings");
 
     // 排名算法，暂时屏蔽
     // const rerankProvider = process.env.RERANK_PROVIDER;

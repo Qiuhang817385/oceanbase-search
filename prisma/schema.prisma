@@ -47,28 +47,6 @@ model MovieCorpus {
   @@map("movie_corpus")
 }
 
-model posts {
-  id        Int      @id @default(autoincrement())
-  createdAt DateTime @default(now())
-  updatedAt DateTime
-  title     String   @db.VarChar(255)
-  content   String?
-  published Boolean  @default(false)
-  authorId  Int
-}
-
-model profiles {
-  id     Int     @id @default(autoincrement())
-  bio    String?
-  userId Int     @unique
-}
-
-model users {
-  id    Int     @id @default(autoincrement())
-  email String  @unique
-  name  String?
-}
-
 // 备用数据库表结构 - movies_with_rating
 model MoviesWithRating {
   id BigInt @id
