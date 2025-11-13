@@ -342,7 +342,7 @@ export default function MovieSearchPage({}: MovieSearchPageProps) {
         <div className={styles.headerContent}>
           <div>
             <Title level={1} className={styles.mainTitle}>
-              混合搜索测试器
+              基于混合搜索的 AI 应用
             </Title>
             <Text className={styles.subtitle}>电影混合搜索</Text>
           </div>

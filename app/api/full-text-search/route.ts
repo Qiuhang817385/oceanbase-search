@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 // 设置请求超时时间
 const REQUEST_TIMEOUT = 25000
 
-// POST /api/multi-hybrid-search - 数据库向量搜索
+// POST /api/full-text-search - 数据库全文搜索
 export async function POST(request: NextRequest) {
   const timeoutPromise = new Promise((_, reject) => {
     setTimeout(() => reject(new Error('请求超时')), REQUEST_TIMEOUT)
@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// 数据库向量搜索函数
+// 数据库搜索函数
 async function performMultiDatabaseSearch({
   limit,
   query,

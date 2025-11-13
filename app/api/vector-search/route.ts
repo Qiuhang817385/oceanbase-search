@@ -17,7 +17,7 @@ export const dynamic = 'force-dynamic'
 // 设置请求超时时间
 const REQUEST_TIMEOUT = 25000
 
-// POST /api/multi-hybrid-search - 多数据库向量搜索
+// POST /api/vector-search - 数据库向量搜索
 export async function POST(request: NextRequest) {
   const timeoutPromise = new Promise((_, reject) => {
     setTimeout(() => reject(new Error('请求超时')), REQUEST_TIMEOUT)
@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// 多数据库向量搜索函数
+// 数据库向量搜索函数
 async function performMultiDatabaseSearch({
   queryEmbedding,
   limit,
@@ -162,9 +162,7 @@ async function searchSingleDatabase({
   let vectorSearchSQLText = ''
 
   try {
-    // 方案1: 使用 embedding 字段进行向量搜索
-    console.log(`🔍  使用 embedding 字段进行向量搜索...`)
-
+    // 使用 embedding 字段进行向量搜索
     vectorSearchSQL = `
       SELECT * FROM hybrid_search('${tableName}', 
         '{

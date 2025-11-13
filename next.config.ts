@@ -12,22 +12,7 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-  images: {
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'img1.doubanio.com',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'img9.doubanio.com',
-        port: '',
-        pathname: '/**',
-      },
-    ],
-  },
+  images: {},
   webpack: (config, { dev, isServer }) => {
     // 统一处理 resolve.fallback（服务端和客户端都需要）
     config.resolve.fallback = {

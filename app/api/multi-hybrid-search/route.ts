@@ -17,7 +17,7 @@ export const dynamic = 'force-dynamic'
 // 设置请求超时时间
 const REQUEST_TIMEOUT = 25000
 
-// POST /api/multi-hybrid-search - 多数据库向量搜索
+// POST /api/multi-hybrid-search - 数据库混合搜索
 export async function POST(request: NextRequest) {
   const timeoutPromise = new Promise((_, reject) => {
     setTimeout(() => reject(new Error('请求超时')), REQUEST_TIMEOUT)
@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// 多数据库向量搜索函数
+// 数据库混合搜索函数
 async function performMultiDatabaseSearch({
   queryEmbedding,
   limit,
@@ -131,7 +131,7 @@ async function performMultiDatabaseSearch({
     // 合并所有结果
     allResults = resultsArrays.flat()
   } catch (error: any) {
-    console.error('多数据库搜索执行失败:', error.message)
+    console.error('数据库混合搜索执行失败:', error.message)
     throw error
   }
 
@@ -146,7 +146,7 @@ async function performMultiDatabaseSearch({
   return {
     results: allResults,
     searchType,
-    message: `多数据库搜索完成，共找到 ${allResults.length} 条结果`,
+    message: `数据库混合搜索完成，共找到 ${allResults.length} 条结果`,
     performance,
     databaseResults,
   }
@@ -174,38 +174,8 @@ async function searchSingleDatabase({
   let vectorSearchSQLText = ''
 
   try {
-    // 方案1: 使用 embedding 字段进行向量搜索
     console.log(`🔍 multi-hybrid-search 混合搜索...`)
 
-    // vectorSearchSQL = `
-    //   SELECT * FROM hybrid_search('${DATABASE_TABLES.MOVIES_WITH_RATING}',
-    //     '{
-    //       "query": {
-    //         "query_string": {
-    //           "fields": [
-    //             "directors^3",
-    //             "actors^2.5",
-    //             "genres^1.5",
-    //             "summary"
-    //           ],
-    //           "query": "${query}"
-    //         }
-    //       },
-    //       "knn": {
-    //         "field": "embedding",
-    //         "k": 50,
-    //         "num_candidates": 100,
-    //         "query_vector": [${queryEmbedding.join(',')}]
-    //       },
-    //       "rank": {
-    //         "rrf": {}
-    //       },
-    //       "hybrid_radio": "0.7",
-    //       "size":"50"
-    //     }')
-
-    //   LIMIT 5
-    // `
     vectorSearchSQL = `
         SELECT * FROM hybrid_search('${tableName}',
           '{
