@@ -1,6 +1,7 @@
 import React, { ReactNode, useState } from 'react'
 import { Col, Modal, Row, Select, Slider, Collapse, Space } from 'antd'
 import Code from '@leafygreen-ui/code'
+import { DATABASE_TABLES } from '@/constants'
 
 type SettingModalProps = {
   open: boolean
@@ -36,7 +37,10 @@ const SettingModal: React.FC<SettingModalProps> = ({
   tokenizeArray,
 }) => {
   const [hybridRadio, setHybridRadio] = useState(0.7)
-  const [selectedTable, setSelectedTable] = useState('movies')
+
+  const [selectedTable, setSelectedTable] = useState(
+    DATABASE_TABLES.MOVIES_WITH_RATING
+  )
 
   const handleOk = async () => {
     if (onSuccess) {
