@@ -13,7 +13,7 @@ export const prismaMain =
   new PrismaClient({
     datasources: {
       db: {
-        url: process.env.DATABASE_URL,
+        url: process.env.DATABASE_URL || '',
       },
     },
     log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
@@ -25,7 +25,7 @@ export const prismaBack =
   new PrismaClient({
     datasources: {
       db: {
-        url: process.env.DATABASE_URL_BACK,
+        url: process.env.DATABASE_URL_BACK || '',
       },
     },
     log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],

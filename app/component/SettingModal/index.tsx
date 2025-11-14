@@ -100,6 +100,10 @@ const SettingModal: React.FC<SettingModalProps> = ({
                   label: 'chinese_movies',
                   value: 'chinese_movies',
                 },
+                {
+                  label: 'chinese_movies_rewritten',
+                  value: 'chinese_movies_rewritten',
+                },
               ]}
               onChange={(value) => setSelectedTable(value)}
             />
