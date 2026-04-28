@@ -8,8 +8,8 @@ export const DATABASE_TABLES = {
   // 主数据库表名
   MOVIE_CORPUS: 'movie_corpus',
 
-  // 备用数据库表名
-  MOVIES_WITH_RATING: 'chinese_movies_rewritten',
+  // 备用键位默认也指向 movie_corpus，避免连接库中无表导致查询失败
+  MOVIES_WITH_RATING: 'movie_corpus',
 } as const
 
 // 数据库键名常量

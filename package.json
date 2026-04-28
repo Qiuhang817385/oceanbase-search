@@ -12,7 +12,8 @@
     "postinstall": "prisma generate",
     "setup": "prisma generate",
     "predev": "npm run setup",
-    "db:check:back": "node check-back-db-structure.js"
+    "db:check:back": "node check-back-db-structure.js",
+    "db:tokenize:backfill": "node scripts/tokenize-backfill.js"
   },
   "dependencies": {
     "@ant-design/icons": "^6.1.0",
